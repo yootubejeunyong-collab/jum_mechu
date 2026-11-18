@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘 뭐 먹지?</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍱</text></svg>">
+<!--OG-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --bg:#D9E0F0; --primary:#5B9BDA; --primary-d:#4A87C4; --navy:#3E698F; --sub:#93B9DB; --action:#79B6BD; --action-d:#62A0A7;
+  --text:#1F3550; --muted:#5D7591; --card:#FFFFFF; --line:#C9D5EA; --soft:#EEF3FA; --err:#C0504D;
+  --shadow:0 10px 30px rgba(62,105,143,.14); --radius:8px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{min-height:100vh;background:var(--bg);color:var(--text);font-family:Pretendard,'Malgun Gothic',sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:26px 16px 90px}
+header{text-align:center}
+h1{font-family:Jua,sans-serif;font-weight:400;font-size:clamp(34px,6vw,54px);margin:0;letter-spacing:-.5px;color:var(--navy)}
+h1 span{color:var(--primary)}
+.sub{color:var(--muted);margin:6px 0 0;font-size:15px}
+.hidden{display:none!important}
+
+/* ---------- 추천 무대 ---------- */
+.stage{display:flex;flex-direction:column;align-items:center;padding:22px 0 26px}
+.plate{position:relative;width:250px;height:250px;display:grid;place-items:center}
+.ring{position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(var(--sub) 0 10deg,#fff 10deg 20deg);opacity:.55;transition:opacity .3s}
+.plate.spinning .ring{animation:rot 1.1s linear infinite;opacity:.9}
+.plate.win .ring{opacity:1;animation:rot 6s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.card{position:relative;width:196px;height:196px;background:#fff;border-radius:40px;box-shadow:var(--shadow);display:grid;place-items:center;will-change:transform}
+.card img,.card .ph{width:168px;height:168px;border-radius:28px;object-fit:contain;display:block}
+.ph{display:grid;place-items:center;font-family:Jua,sans-serif;color:rgba(31,53,80,.5);user-select:none}
+.card .ph{font-size:62px}
+.bit{position:absolute;left:50%;top:50%;width:9px;height:13px;border-radius:2px;pointer-events:none}
+.stage-name{font-family:Jua,sans-serif;font-size:clamp(26px,5vw,40px);margin:16px 0 8px;min-height:1.3em;text-align:center;will-change:transform}
+.stage-name b{color:var(--primary);font-weight:400}
+.spin{font-family:Jua,sans-serif;font-size:22px;border:0;border-radius:999px;padding:15px 38px;background:var(--action);color:#fff;
+  box-shadow:0 6px 0 var(--action-d),0 12px 24px rgba(98,160,167,.35);cursor:pointer;transition:transform .14s cubic-bezier(.3,1.6,.5,1),box-shadow .14s}
+.spin:hover{transform:translateY(-2px)}
+.spin:active{transform:translateY(5px) scale(.96);box-shadow:0 1px 0 var(--action-d),0 5px 12px rgba(98,160,167,.3)}
+.spin:disabled{opacity:.8;cursor:wait}
+.hint{color:var(--muted);font-size:13px;margin:10px 0 0;text-align:center}
+
+/* ---------- 조건 고르기 ---------- */
+.panel{background:var(--card);border-radius:22px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px}
+.panel h2{font-family:Jua,sans-serif;font-weight:400;font-size:21px;margin:0 0 4px;color:var(--navy)}
+.panel .desc{color:var(--muted);font-size:13px;margin:0 0 12px;line-height:1.6}
+.picker{max-width:760px;margin:0 auto 18px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{position:relative;border:0;background:var(--soft);border-radius:12px;padding:10px 14px;font-weight:700;font-size:15px;cursor:pointer;color:var(--navy);transition:background .12s}
+.tab:hover{background:#E1EAF6}
+.tab.on{background:var(--navy);color:#fff}
+.tab.rand.on{background:var(--action)}
+.tab .cnt{position:absolute;top:-6px;right:-6px;background:var(--primary);color:#fff;font-size:11px;min-width:19px;height:19px;border-radius:99px;display:grid;place-items:center;padding:0 5px;border:2px solid #fff}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-size:15px;cursor:pointer;transition:transform .14s cubic-bezier(.3,1.6,.5,1),background .12s}
+.chip:hover{background:var(--soft)}
+.chip:active{transform:scale(.94)}
+.chip.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700}
+.chip.ex{background:#FBECEC;border-color:var(--err);color:var(--err);font-weight:700;text-decoration:line-through}
+.chip.ex::before{content:"🚫 ";text-decoration:none;display:inline-block;margin-right:2px}
+.modebar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.modehint{font-size:12px;color:var(--muted)}
+#modeSeg button[data-v=out].on{color:var(--err)}
+.chip.sm{padding:5px 11px;font-size:13px}
+.chip .n{opacity:.6;font-size:12px;margin-left:3px}
+.rand-box{background:var(--soft);border-radius:14px;padding:14px;line-height:1.7;font-size:14px}
+.more{margin-top:12px;border-top:1.5px dashed var(--line);padding-top:10px}
+.more summary{cursor:pointer;color:var(--muted);font-size:14px}
+.subrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.subrow .lbl{font-size:13px;color:var(--muted);width:52px}
+.seg{display:inline-flex;background:var(--soft);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
+.seg button.on{background:#fff;color:var(--navy);font-weight:700;box-shadow:0 2px 6px rgba(62,105,143,.18)}
+.summary{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-top:12px;font-size:14px}
+.summary .what{color:var(--muted)}
+.summary .what b{color:var(--navy)}
+.linkbtn{border:0;background:none;color:var(--primary);cursor:pointer;font-size:13px;padding:4px 6px;text-decoration:underline}
+.cands{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;max-height:180px;overflow:auto}
+.cands span{background:var(--soft);border-radius:8px;padding:3px 8px;font-size:13px}
+
+/* ---------- 관리자 ---------- */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1.5px solid var(--sub);background:#fff;border-radius:var(--radius);padding:9px 13px;font-size:14px;cursor:pointer;transition:transform .14s cubic-bezier(.3,1.6,.5,1),background .12s}
+.btn:hover{background:var(--soft)}
+.btn:active{transform:scale(.95)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700}
+.btn.primary:hover{background:var(--primary-d)}
+.btn.action{background:var(--action);border-color:var(--action);color:#fff;font-weight:700}
+.btn.action:hover{background:var(--action-d)}
+.btn.danger{color:var(--err);border-color:#E5B9B8}
+input[type=text],input[type=search],input[type=number],select,textarea{font:inherit;font-size:14px;border:1.5px solid var(--line);border-radius:var(--radius);padding:8px 10px;background:#fff;color:var(--text);outline:none;min-width:0}
+input:focus,select:focus,textarea:focus{border-color:var(--primary)}
+.topbar{display:flex;justify-content:flex-end;margin-bottom:10px}
+details.box summary{cursor:pointer;color:var(--muted);font-size:14px;margin-top:4px}
+details.box .row{margin-top:10px}
+.og-box{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:center;margin-top:16px;padding-top:16px;border-top:1.5px dashed var(--line)}
+@media (max-width:760px){.og-box{grid-template-columns:1fr}}
+.og-box h3{font-family:Jua,sans-serif;font-weight:400;font-size:19px;margin:0 0 4px;color:var(--navy)}
+#ogCanvas{width:100%;height:auto;border-radius:14px;box-shadow:0 6px 18px rgba(62,105,143,.18);background:var(--soft)}
+
+/* 시트 자르기 */
+.sheet{border:1.5px solid var(--line);border-radius:16px;padding:12px;margin-top:14px;background:#FBFCFE}
+.sheet-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.sheet-head b{font-size:14px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet-head input[type=number]{width:54px}
+.sheet textarea{width:100%;min-height:110px;margin-bottom:10px}
+.cells{display:grid;gap:8px}
+.cell{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:5px;align-items:center}
+.cell img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:8px;background:#fff}
+.cell select{width:100%;font-size:12px;padding:4px}
+.cell.skip{opacity:.4}
+.cell .tag{font-size:11px;color:var(--muted)}
+
+/* 선택지별 메뉴 */
+.mgr{display:grid;grid-template-columns:230px 1fr;gap:16px}
+@media (max-width:760px){.mgr{grid-template-columns:1fr}}
+.side{max-height:640px;overflow:auto;padding-right:4px}
+.side h4{margin:12px 0 6px;font-size:13px;color:var(--muted);font-weight:700}
+.side h4:first-child{margin-top:0}
+.side button{display:flex;justify-content:space-between;width:100%;border:0;background:transparent;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:14px;text-align:left}
+.side button:hover{background:var(--soft)}
+.side button.on{background:var(--primary);color:#fff;font-weight:700}
+.side button .c{opacity:.65;font-size:12px}
+.mhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.mhead h3{margin:0;font-family:Jua,sans-serif;font-weight:400;font-size:22px;color:var(--navy)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px}
+.item{position:relative;background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:9px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .2s cubic-bezier(.3,1.6,.5,1)}
+.item:hover{transform:translateY(-3px);border-color:var(--sub)}
+.item.off{opacity:.45}
+.thumb{width:100%;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#fff}
+.thumb img,.thumb .ph{width:100%;height:100%;object-fit:contain;display:block}
+.thumb .ph{display:grid;font-size:36px}
+.item .nm{margin-top:6px;font-weight:600;font-size:14px;text-align:center;word-break:keep-all;line-height:1.3}
+.item .flags{font-size:11px;color:var(--muted);margin-top:2px;text-align:center}
+.item .x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:99px;border:0;background:rgba(31,53,80,.75);color:#fff;font-size:13px;cursor:pointer;display:grid;place-items:center;opacity:0;transition:opacity .15s}
+.item:hover .x{opacity:1}
+@media (hover:none){.item .x{opacity:1}}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:30px 0}
+
+/* 모달 */
+.modal{position:fixed;inset:0;background:rgba(31,53,80,.45);z-index:40;display:grid;place-items:center;padding:16px}
+.dlg{background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:min(720px,100%);max-height:92vh;overflow:auto;padding:20px}
+.dlg h3{margin:0 0 12px;font-family:Jua,sans-serif;font-weight:400;font-size:22px;color:var(--navy)}
+.ed-top{display:grid;grid-template-columns:130px 1fr;gap:14px;align-items:start;margin-bottom:10px}
+.ed-top .thumb{cursor:pointer;border:1.5px solid var(--line)}
+.ed-sec{margin-top:12px}
+.ed-sec .t{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;margin-right:12px;user-select:none}
+.toggle input{width:17px;height:17px;accent-color:var(--primary)}
+.dlg-foot{display:flex;justify-content:space-between;gap:8px;margin-top:18px}
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:12px;max-height:55vh;overflow:auto}
+.pick-grid .item{padding:6px}
+.pick-grid .item.in{border-color:var(--primary);background:#EAF2FB}
+.pick-grid .item.in::after{content:"✓";position:absolute;top:4px;right:6px;color:var(--primary);font-weight:900}
+
+/* 토스트 / 드롭 */
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,160px);background:var(--navy);color:#fff;padding:12px 18px;border-radius:14px;
+  transition:transform .4s cubic-bezier(.3,1.5,.5,1);z-index:60;max-width:90vw;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.2);white-space:pre-line}
+.toast.show{transform:translate(-50%,0);opacity:1}
+.toast:not(.show){opacity:0;transition:transform .4s,opacity .3s .1s}
+.drop{position:fixed;inset:0;background:rgba(91,155,218,.18);backdrop-filter:blur(2px);z-index:50;display:none;place-items:center;pointer-events:none}
+.drop.show{display:grid}
+.drop div{font-family:Jua,sans-serif;font-size:28px;background:#fff;border:3px dashed var(--primary);border-radius:28px;padding:32px 44px;color:var(--primary);text-align:center;line-height:1.5}
+.drop small{display:block;font-family:Pretendard,sans-serif;font-size:14px;color:var(--muted)}
+.back{position:fixed;right:16px;bottom:16px;z-index:30}
+
+/* 배포용(추천 전용) */
+body.viewer .admin, body.preview .admin{display:none!important}
+body:not(.preview) .back{display:none}
+body.viewer .back{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar admin"><button class="btn" id="previewBtn">👀 배포 화면 미리보기</button></div>
+  <header>
+    <h1>오늘 <span>뭐 먹지?</span></h1>
+    <p class="sub">조건을 고르고 버튼을 누르면 메뉴를 골라드려요</p>
+  </header>
+
+  <section class="stage">
+    <div class="plate" id="plate">
+      <div class="ring"></div>
+      <div class="card" id="card">
+        <img id="stageImg" class="hidden" alt="">
+        <div class="ph" id="stagePh" style="background:#EAF1FA">?</div>
+      </div>
+    </div>
+    <div class="stage-name" id="stageName">두근두근…</div>
+    <button class="spin" id="spinBtn">🍽️ 메뉴 추천받기</button>
+    <p class="hint" id="poolHint"></p>
+  </section>
+
+  <section class="panel picker">
+    <div class="tabs" id="tabs"></div>
+    <div class="modebar" id="modeBar"><div class="seg" id="modeSeg"><button data-v="in" class="on">✅ 이 조건으로</button><button data-v="out">🚫 이 조건 빼고</button></div><span class="modehint" id="modeHint"></span></div>
+    <div id="chipArea"></div>
+    <div class="summary">
+      <span class="what" id="selText"></span>
+      <span><button class="linkbtn" id="resetSel">조건 초기화</button><button class="linkbtn" id="showCands">후보 보기</button></span>
+    </div>
+    <div class="cands hidden" id="cands"></div>
+  </section>
+
+  <!-- ===== 관리자 ===== -->
+  <section class="panel admin">
+    <div class="cols">
+      <div>
+        <h2>📸 이미지 넣기 (파일 이름)</h2>
+        <p class="desc">파일 이름이 메뉴 이름과 같으면 자동으로 연결돼요. (예: <b>가츠동.png</b> → 가츠동)<br>이미지 파일을 화면에 <b>끌어다 놓아도</b> 됩니다.</p>
+        <div class="row">
+          <button class="btn primary" id="bulkBtn">이미지 여러 개 선택</button>
+          <button class="btn" id="folderBtn">폴더 통째로 선택</button>
+        </div>
+      </div>
+      <div>
+        <h2>✂️ Gemini 시트 자르기</h2>
+        <p class="desc">4×4 시트를 칸별로 잘라 메뉴에 연결해요. 파일 이름에 <b>묶음3</b>처럼 번호가 있으면 자동으로 묶음을 맞춰요.<br>
+          '묶음'이 들어간 파일은 끌어다 놓아도 시트로 인식해요.</p>
+        <div class="row"><button class="btn primary" id="sheetBtn">시트 이미지 선택</button><button class="btn action hidden" id="sheetAllBtn">모든 시트 연결</button></div>
+      </div>
+    </div>
+    <div id="sheets"></div>
+  </section>
+
+  <section class="panel admin">
+    <h2>🗂️ 선택지별 메뉴</h2>
+    <p class="desc">왼쪽에서 선택지를 누르면 들어 있는 메뉴가 보여요. 메뉴를 누르면 이름·이미지·선택지를 한 번에 고칠 수 있어요.</p>
+    <div class="mgr">
+      <div class="side" id="side"></div>
+      <div>
+        <div class="mhead">
+          <h3 id="mTitle"></h3>
+          <div class="row">
+            <input type="search" id="mSearch" placeholder="메뉴 검색" style="width:140px">
+            <button class="btn primary" id="mPick">+ 기존 메뉴 넣기</button>
+            <input type="text" id="newName" placeholder="새 메뉴 이름" style="width:130px">
+            <button class="btn action" id="newBtn">+ 새 메뉴</button>
+          </div>
+        </div>
+        <div class="grid" id="grid"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel admin">
+    <h2>💾 백업 · 배포 · 초기화</h2>
+    <div class="row">
+      <button class="btn action" id="bakeBtn">🌐 배포용 파일 저장 (추천 전용)</button>
+      <button class="btn" id="exportBtn">💾 백업 파일 저장</button>
+      <button class="btn" id="importBtn">📂 백업 불러오기</button>
+      <button class="btn danger" id="resetBtn">↺ 처음 목록으로 초기화</button>
+    </div>
+    <div class="og-box">
+      <div>
+        <h3>🔗 링크 미리보기 이미지</h3>
+        <p class="desc">카톡·디스코드에 링크를 붙이면 뜨는 이미지예요. 넣어둔 음식 이미지 3개로 자동으로 만들어져요.<br>미리보기가 뜨려면 <b>사이트 주소</b>를 꼭 넣어주세요.</p>
+        <div class="row">
+          <input type="text" id="siteUrl" placeholder="https://아이디.github.io/저장소이름" style="flex:1;min-width:200px">
+          <button class="btn" id="shuffleOg">🎲 사진 섞기</button>
+        </div>
+      </div>
+      <canvas id="ogCanvas" width="1200" height="630"></canvas>
+    </div>
+  </section>
+</div>
+
+<button class="btn primary back" id="backBtn">✏️ 편집 화면으로</button>
+<input type="file" id="bulkInput" accept="image/*" multiple hidden>
+<input type="file" id="folderInput" webkitdirectory multiple hidden>
+<input type="file" id="singleInput" accept="image/*" hidden>
+<input type="file" id="sheetInput" accept="image/*" multiple hidden>
+<input type="file" id="importInput" accept=".json,application/json" hidden>
+<div class="drop" id="drop"><div>여기에 이미지를 놓으세요<small>'묶음'이 들어간 파일은 시트로 잘라요</small></div></div>
+<div class="toast" id="toast"></div>
+<div id="modalRoot"></div>
+
+<script id="baked" type="application/json">null</script>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const SOURCE_HTML = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+let BAKED = null;
+try { BAKED = JSON.parse($('#baked').textContent); } catch (e) {}
+const VIEWER = !!(BAKED && BAKED.viewer);
+
+/* ---------------- 기본 데이터 ---------------- */
+const DEFAULT_MENUS = [{"id":"d000","name":"돼지국밥","meal":true,"on":true,"tags":["점심","해장","혼밥","한식","배고픔","피곤·기력보충","비 오는 날","추운 날","국물","밥","저녁"]},{"id":"d001","name":"순대국밥","meal":true,"on":true,"tags":["점심","해장","혼밥","한식","배고픔","비 오는 날","추운 날","국물","밥","저녁"]},{"id":"d002","name":"곰탕","meal":true,"on":true,"tags":["점심","한식","피곤·기력보충","추운 날","국물","저녁"]},{"id":"d003","name":"설렁탕","meal":true,"on":true,"tags":["점심","한식","피곤·기력보충","추운 날","국물","저녁"]},{"id":"d004","name":"갈비탕","meal":true,"on":true,"tags":["점심","한식","피곤·기력보충","추운 날","국물","저녁"]},{"id":"d005","name":"뼈해장국","meal":true,"on":true,"tags":["점심","해장","혼밥","한식","분노","배고픔","추운 날","매운맛","국물","저녁"]},{"id":"d006","name":"감자탕","meal":true,"on":true,"tags":["저녁","술안주","해장","회식·단체","한식","분노","배고픔","비 오는 날","추운 날","매운맛","국물"]},{"id":"d007","name":"콩나물 국밥","meal":true,"on":true,"tags":["점심","해장","혼밥","한식","국물","밥","저녁"]},{"id":"d008","name":"삼계탕","meal":true,"on":true,"tags":["점심","한식","우울","피곤·기력보충","추운 날","더운 날","국물","저녁"]},{"id":"d009","name":"육개장","meal":true,"on":true,"tags":["점심","해장","한식","분노","피곤·기력보충","비 오는 날","추운 날","매운맛","국물","저녁"]},{"id":"d010","name":"황태해장국","meal":true,"on":true,"tags":["해장","한식","국물"]},{"id":"d011","name":"선지해장국","meal":true,"on":true,"tags":["해장","한식","매운맛","국물"]},{"id":"d012","name":"추어탕","meal":true,"on":true,"tags":["점심","한식","피곤·기력보충","추운 날","국물","저녁"]},{"id":"d013","name":"닭한마리","meal":true,"on":true,"tags":["저녁","술안주","회식·단체","한식","피곤·기력보충","비 오는 날","추운 날","국물","고기"]},{"id":"d014","name":"수제비","meal":true,"on":true,"tags":["점심","한식","우울","비 오는 날","국물","저녁"]},{"id":"d015","name":"김치찌개","meal":true,"on":true,"tags":["점심","저녁","해장","한식","우울","비 오는 날","추운 날","매운맛","국물"]},{"id":"d016","name":"된장찌개","meal":true,"on":true,"tags":["점심","저녁","한식","추운 날","국물"]},{"id":"d017","name":"순두부찌개","meal":true,"on":true,"tags":["점심","해장","한식","비 오는 날","추운 날","매운맛","국물","저녁"]},{"id":"d018","name":"청국장","meal":true,"on":true,"tags":["점심","한식","추운 날","국물","저녁"]},{"id":"d019","name":"부대찌개","meal":true,"on":true,"tags":["점심","저녁","술안주","회식·단체","한식","우울","분노","배고픔","비 오는 날","추운 날","매운맛","국물"]},{"id":"d020","name":"백반","meal":true,"on":true,"tags":["아침","점심","저녁","혼밥","한식","배고픔","국물","밥"]},{"id":"d021","name":"제육볶음","meal":true,"on":true,"tags":["점심","한식","분노","배고픔","매운맛","밥","저녁","고기"]},{"id":"d022","name":"제육덮밥","meal":true,"on":true,"tags":["점심","혼밥","한식","매운맛","밥","저녁"]},{"id":"d023","name":"불고기","meal":true,"on":true,"tags":["점심","저녁","한식","배고픔","피곤·기력보충","밥","고기"]},{"id":"d024","name":"떡갈비","meal":true,"on":true,"tags":["점심","한식","배고픔","피곤·기력보충","저녁","고기"]},{"id":"d025","name":"쌈밥","meal":true,"on":true,"tags":["점심","다이어트","한식","가볍게","밥","저녁"]},{"id":"d026","name":"비빔밥","meal":true,"on":true,"tags":["점심","혼밥","한식","가볍게","밥"]},{"id":"d027","name":"육회 비빔밥","meal":true,"on":true,"tags":["점심","한식","밥"]},{"id":"d028","name":"생선구이","meal":true,"on":true,"tags":["점심","저녁","한식","가볍게","밥","해물"]},{"id":"d029","name":"갈치조림","meal":true,"on":true,"tags":["점심","저녁","한식","매운맛","밥","해물"]},{"id":"d030","name":"삼겹살or양념갈비","meal":true,"on":true,"tags":["저녁","술안주","회식·단체","한식","분노","기쁨·축하","배고픔","피곤·기력보충","고기"]},{"id":"d031","name":"냉면&숯불갈비","meal":true,"on":true,"tags":["점심","저녁","해장","회식·단체","한식","기쁨·축하","배고픔","더운 날","국물","면","고기"]},{"id":"d032","name":"수육","meal":true,"on":true,"tags":["저녁","술안주","회식·단체","한식","피곤·기력보충","고기"]},{"id":"d033","name":"보쌈","meal":true,"on":true,"tags":["저녁","야식","술안주","회식·단체","한식","기쁨·축하","배고픔","피곤·기력보충","고기"]},{"id":"d034","name":"족발","meal":true,"on":true,"tags":["저녁","야식","술안주","회식·단체","한식","분노","기쁨·축하","배고픔","고기"]},{"id":"d035","name":"곱창·막창","meal":true,"on":true,"tags":["저녁","야식","술안주","회식·단체","한식","분노","고기"]},{"id":"d036","name":"양갈비","meal":true,"on":true,"tags":["저녁","데이트","술안주","회식·단체","양식","분노","기쁨·축하","피곤·기력보충","고기"]},{"id":"d037","name":"스테이크","meal":true,"on":true,"tags":["저녁","데이트","양식","분노","기쁨·축하","배고픔","피곤·기력보충","고기"]},{"id":"d038","name":"닭갈비","meal":true,"on":true,"tags":["점심","저녁","술안주","회식·단체","한식","분노","배고픔","매운맛","고기"]},{"id":"d039","name":"닭볶음탕","meal":true,"on":true,"tags":["저녁","술안주","회식·단체","한식","분노","배고픔","비 오는 날","매운맛","국물","고기"]},{"id":"d040","name":"찜닭","meal":true,"on":true,"tags":["저녁","회식·단체","한식","우울","배고픔","고기"]},{"id":"d041","name":"아구찜","meal":true,"on":true,"tags":["저녁","술안주","회식·단체","한식","분노","매운맛","해물"]},{"id":"d042","name":"낙곱새","meal":true,"on":true,"tags":["점심","저녁","술안주","회식·단체","한식","분노","배고픔","매운맛","국물","데이트","야식","해물","고기"]},{"id":"d043","name":"쭈꾸미볶음","meal":true,"on":true,"tags":["점심","저녁","야식","술안주","회식·단체","한식","분노","매운맛","해물"]},{"id":"d044","name":"훠궈","meal":true,"on":true,"tags":["저녁","술안주","회식·단체","중식","분노","피곤·기력보충","비 오는 날","추운 날","매운맛","국물","고기"]},{"id":"d045","name":"콩국수","meal":true,"on":true,"tags":["점심","한식","가볍게","더운 날","국물","면","저녁"]},{"id":"d046","name":"비빔국수","meal":true,"on":true,"tags":["점심","한식","분노","더운 날","매운맛","면","저녁"]},{"id":"d047","name":"잔치국수","meal":true,"on":true,"tags":["점심","한식","가볍게","비 오는 날","국물","면","저녁"]},{"id":"d048","name":"밀면","meal":true,"on":true,"tags":["점심","해장","한식","가볍게","더운 날","국물","면","저녁"]},{"id":"d049","name":"쫄면","meal":true,"on":true,"tags":["점심","분식","분노","더운 날","매운맛","면"]},{"id":"d050","name":"곤약비빔면","meal":true,"on":true,"tags":["다이어트","한식","가볍게","더운 날","매운맛","면"]},{"id":"d051","name":"김밥&라면","meal":true,"on":true,"tags":["점심","야식","혼밥","분식","배고픔","국물","밥","면","저녁"]},{"id":"d052","name":"분식세트","meal":true,"on":true,"tags":["점심","야식","분식","우울","배고픔","매운맛","밥","빵·간편","저녁","데이트"]},{"id":"d053","name":"떡볶이","meal":true,"on":true,"tags":["점심","야식","분식","우울","분노","매운맛","빵·간편","저녁","데이트"]},{"id":"d054","name":"라볶이","meal":true,"on":true,"tags":["점심","야식","분식","우울","분노","매운맛","면","저녁","데이트"]},{"id":"d055","name":"컵밥","meal":true,"on":true,"tags":["점심","혼밥","밥","저녁"]},{"id":"d056","name":"삼각김밥&우동","meal":true,"on":true,"tags":["아침","점심","혼밥","분식","가볍게","국물","밥","면"]},{"id":"d057","name":"토스트&커피","meal":true,"on":true,"tags":["아침","디저트·간식","분식","패스트푸드","가볍게","빵·간편"]},{"id":"d058","name":"죽","meal":true,"on":true,"tags":["아침","해장","한식","가볍게","피곤·기력보충","밥"]},{"id":"d059","name":"해물파전","meal":false,"on":true,"tags":["술안주","한식","비 오는 날","빵·간편","해물"]},{"id":"d060","name":"두부김치","meal":false,"on":true,"tags":["술안주","한식","빵·간편"]},{"id":"d061","name":"골뱅이무침","meal":false,"on":true,"tags":["술안주","한식","매운맛","해물"]},{"id":"d062","name":"계란말이","meal":false,"on":true,"tags":["술안주","한식","빵·간편"]},{"id":"d063","name":"닭발","meal":false,"on":true,"tags":["야식","술안주","한식","분노","매운맛","고기"]},{"id":"d064","name":"닭강정","meal":false,"on":true,"tags":["야식","술안주","디저트·간식","한식","우울","고기"]},{"id":"d065","name":"치킨","meal":true,"on":true,"tags":["저녁","야식","술안주","회식·단체","한식","패스트푸드","우울","분노","기쁨·축하","배고픔","고기"]},{"id":"d066","name":"짜장면","meal":true,"on":true,"tags":["점심","야식","혼밥","중식","우울","배고픔","면"]},{"id":"d067","name":"짬뽕","meal":true,"on":true,"tags":["점심","야식","해장","혼밥","중식","분노","비 오는 날","매운맛","국물","면","해물"]},{"id":"d068","name":"탕수육","meal":true,"on":true,"tags":["점심","저녁","야식","술안주","회식·단체","중식","배고픔","고기"]},{"id":"d069","name":"마파두부밥","meal":true,"on":true,"tags":["점심","중식","매운맛","밥","저녁"]},{"id":"d070","name":"깐풍기","meal":false,"on":true,"tags":["술안주","중식","매운맛","고기"]},{"id":"d071","name":"꿔바로우","meal":false,"on":true,"tags":["술안주","중식","고기"]},{"id":"d072","name":"양꼬치","meal":true,"on":true,"tags":["저녁","야식","술안주","회식·단체","중식","분노","고기"]},{"id":"d073","name":"딤섬","meal":true,"on":true,"tags":["점심","저녁","데이트","회식·단체","중식","기쁨·축하","가볍게","빵·간편"]},{"id":"d074","name":"우육면","meal":true,"on":true,"tags":["점심","해장","중식","추운 날","국물","면","저녁"]},{"id":"d075","name":"마라샹궈","meal":true,"on":true,"tags":["저녁","술안주","회식·단체","중식","분노","매운맛","고기"]},{"id":"d076","name":"돈가스","meal":true,"on":true,"tags":["점심","혼밥","일식","우울","배고픔","밥","고기"]},{"id":"d077","name":"규카츠","meal":true,"on":true,"tags":["점심","혼밥","일식","배고픔","저녁","데이트","고기"]},{"id":"d078","name":"가츠동","meal":true,"on":true,"tags":["점심","혼밥","일식","배고픔","밥"]},{"id":"d079","name":"규동","meal":true,"on":true,"tags":["점심","혼밥","일식","밥"]},{"id":"d080","name":"사케동","meal":true,"on":true,"tags":["점심","혼밥","일식","가볍게","밥","해물"]},{"id":"d081","name":"텐동","meal":true,"on":true,"tags":["점심","데이트","혼밥","일식","밥","해물"]},{"id":"d082","name":"카이센동","meal":true,"on":true,"tags":["점심","저녁","데이트","혼밥","일식","기쁨·축하","더운 날","밥","해물"]},{"id":"d083","name":"회덮밥","meal":true,"on":true,"tags":["점심","혼밥","한식","일식","가볍게","더운 날","밥","해물"]},{"id":"d084","name":"장어덮밥","meal":true,"on":true,"tags":["점심","데이트","혼밥","일식","기쁨·축하","피곤·기력보충","더운 날","밥","저녁","해물"]},{"id":"d085","name":"치킨마요덮밥","meal":true,"on":true,"tags":["점심","혼밥","일식","밥","저녁"]},{"id":"d086","name":"대창덮밥","meal":true,"on":true,"tags":["점심","혼밥","한식","일식","밥","저녁"]},{"id":"d087","name":"오므라이스","meal":true,"on":true,"tags":["점심","혼밥","일식","양식","우울","밥","아침"]},{"id":"d088","name":"카레라이스","meal":true,"on":true,"tags":["점심","혼밥","일식","우울","배고픔","밥","저녁"]},{"id":"d089","name":"초밥","meal":true,"on":true,"tags":["점심","저녁","데이트","술안주","일식","기쁨·축하","가볍게","더운 날","밥","해물"]},{"id":"d090","name":"마제소바","meal":true,"on":true,"tags":["점심","혼밥","일식","배고픔","면","저녁"]},{"id":"d091","name":"우동","meal":true,"on":true,"tags":["점심","해장","혼밥","일식","가볍게","비 오는 날","추운 날","국물","면","저녁"]},{"id":"d092","name":"소바","meal":true,"on":true,"tags":["점심","혼밥","일식","가볍게","더운 날","면","저녁","데이트"]},{"id":"d093","name":"스키야키","meal":true,"on":true,"tags":["저녁","데이트","일식","기쁨·축하","피곤·기력보충","추운 날","국물","고기"]},{"id":"d094","name":"오코노미야키","meal":true,"on":true,"tags":["야식","술안주","일식","빵·간편"]},{"id":"d095","name":"카츠산도","meal":true,"on":true,"tags":["점심","일식","빵·간편","저녁"]},{"id":"d096","name":"야키토리","meal":false,"on":true,"tags":["야식","술안주","일식","고기"]},{"id":"d097","name":"가라아게","meal":false,"on":true,"tags":["술안주","일식","고기"]},{"id":"d098","name":"타코야키","meal":false,"on":true,"tags":["야식","디저트·간식","일식","빵·간편"]},{"id":"d099","name":"파스타","meal":true,"on":true,"tags":["점심","저녁","데이트","양식","우울","기쁨·축하","면"]},{"id":"d100","name":"리조또","meal":true,"on":true,"tags":["점심","데이트","양식","밥"]},{"id":"d101","name":"라자냐","meal":true,"on":true,"tags":["저녁","데이트","양식","우울","기쁨·축하","빵·간편"]},{"id":"d102","name":"화덕피자&뇨끼","meal":true,"on":true,"tags":["점심","저녁","데이트","양식","기쁨·축하","빵·간편"]},{"id":"d103","name":"피자","meal":true,"on":true,"tags":["저녁","야식","술안주","회식·단체","패스트푸드","우울","기쁨·축하","배고픔","빵·간편"]},{"id":"d104","name":"수제버거","meal":true,"on":true,"tags":["점심","데이트","혼밥","양식","패스트푸드","우울","배고픔","빵·간편","저녁"]},{"id":"d105","name":"핫도그","meal":true,"on":true,"tags":["점심","야식","패스트푸드","빵·간편"]},{"id":"d106","name":"샌드위치","meal":true,"on":true,"tags":["아침","점심","혼밥","양식","패스트푸드","가볍게","빵·간편"]},{"id":"d107","name":"잠봉뵈르","meal":true,"on":true,"tags":["아침","점심","데이트","양식","가볍게","빵·간편","저녁"]},{"id":"d108","name":"샐러드","meal":true,"on":true,"tags":["점심","다이어트","혼밥","양식","가볍게","더운 날","빵·간편","아침"]},{"id":"d109","name":"브런치 플래터","meal":true,"on":true,"tags":["아침","데이트","양식","빵·간편"]},{"id":"d110","name":"피시앤칩스","meal":true,"on":true,"tags":["점심","술안주","양식","빵·간편","해물"]},{"id":"d111","name":"바비큐 립","meal":true,"on":true,"tags":["저녁","데이트","양식","분노","기쁨·축하","배고픔","고기"]},{"id":"d112","name":"감바스","meal":false,"on":true,"tags":["데이트","술안주","양식","기쁨·축하","해물"]},{"id":"d113","name":"프렌치토스트","meal":true,"on":true,"tags":["아침","양식","빵·간편"]},{"id":"d114","name":"베이글","meal":true,"on":true,"tags":["아침","양식","가볍게","빵·간편"]},{"id":"d115","name":"나초","meal":false,"on":true,"tags":["술안주","패스트푸드","세계요리","빵·간편"]},{"id":"d116","name":"브리또","meal":true,"on":true,"tags":["점심","혼밥","세계요리","배고픔","밥"]},{"id":"d117","name":"타코&퀘사디아","meal":true,"on":true,"tags":["점심","데이트","세계요리","빵·간편"]},{"id":"d118","name":"케밥","meal":true,"on":true,"tags":["점심","혼밥","패스트푸드","세계요리","배고픔","빵·간편","저녁","고기"]},{"id":"d119","name":"인도요리","meal":true,"on":true,"tags":["점심","저녁","데이트","회식·단체","세계요리","기쁨·축하","밥"]},{"id":"d120","name":"쌀국수","meal":true,"on":true,"tags":["점심","해장","혼밥","가볍게","비 오는 날","국물","면","세계요리"]},{"id":"d121","name":"분짜","meal":true,"on":true,"tags":["점심","가볍게","더운 날","면","세계요리"]},{"id":"d122","name":"반미","meal":true,"on":true,"tags":["아침","점심","가볍게","빵·간편","세계요리"]},{"id":"d123","name":"월남쌈","meal":true,"on":true,"tags":["점심","가볍게","더운 날","빵·간편","저녁","세계요리","해물"]},{"id":"d124","name":"반쎄오","meal":true,"on":true,"tags":["점심","빵·간편","저녁","세계요리"]},{"id":"d125","name":"팟타이","meal":true,"on":true,"tags":["점심","데이트","면","저녁","세계요리"]},{"id":"d126","name":"카오팟","meal":true,"on":true,"tags":["점심","밥","세계요리"]},{"id":"d127","name":"나시고렝","meal":true,"on":true,"tags":["점심","밥","저녁","세계요리"]},{"id":"d128","name":"똠얌꿍","meal":true,"on":true,"tags":["해장","분노","비 오는 날","매운맛","국물","세계요리","해물"]},{"id":"d129","name":"푸팟퐁커리","meal":true,"on":true,"tags":["점심","저녁","데이트","기쁨·축하","밥","세계요리","해물"]},{"id":"d131","name":"락사","meal":true,"on":true,"tags":["점심","매운맛","국물","면","세계요리","해물"]},{"id":"d132","name":"하이난치킨라이스","meal":true,"on":true,"tags":["점심","밥","세계요리"]},{"id":"d133","name":"닭가슴살 도시락","meal":true,"on":true,"tags":["점심","다이어트","한식","가볍게","밥","아침"]},{"id":"d134","name":"그릭 요거트","meal":true,"on":true,"tags":["아침","다이어트","양식","가볍게","빵·간편"]},{"id":"d135","name":"오버나이트 오트밀","meal":true,"on":true,"tags":["아침","다이어트","양식","가볍게","빵·간편"]},{"id":"d136","name":"장조림 버터밥","meal":true,"on":true,"tags":["아침","점심","다이어트","혼밥","한식","밥"]},{"id":"d137","name":"사과&땅콩버터","meal":false,"on":true,"tags":["아침","다이어트","디저트·간식","빵·간편"]},{"id":"d138","name":"빙수","meal":false,"on":true,"tags":["데이트","디저트·간식","우울","더운 날"]},{"id":"d139","name":"케이크","meal":false,"on":true,"tags":["데이트","디저트·간식","우울","기쁨·축하"]},{"id":"d140","name":"마카롱","meal":false,"on":true,"tags":["디저트·간식"]},{"id":"d141","name":"크로플&와플","meal":false,"on":true,"tags":["디저트·간식","우울"]},{"id":"d142","name":"젤라또","meal":false,"on":true,"tags":["데이트","디저트·간식","우울","더운 날"]},{"id":"d143","name":"붕어빵&호떡","meal":false,"on":true,"tags":["디저트·간식","추운 날"]},{"id":"d144","name":"탕후루","meal":false,"on":true,"tags":["디저트·간식"]},{"id":"d145","name":"츄러스","meal":false,"on":true,"tags":["디저트·간식"]},{"id":"d146","name":"티라미수","meal":false,"on":true,"tags":["데이트","디저트·간식","기쁨·축하"]},{"id":"d147","name":"도넛","meal":false,"on":true,"tags":["디저트·간식","우울"]},{"id":"d148","name":"에그타르트","meal":false,"on":true,"tags":["디저트·간식"]},{"id":"d149","name":"팬케이크","meal":false,"on":true,"tags":["디저트·간식","우울"]},{"id":"d150","name":"약과","meal":false,"on":true,"tags":["디저트·간식"]},{"id":"d151","name":"바스크 치즈케이크","meal":false,"on":true,"tags":["데이트","디저트·간식","기쁨·축하"]},{"id":"d152","name":"마들렌","meal":false,"on":true,"tags":["디저트·간식"]},{"id":"d153","name":"까눌레","meal":false,"on":true,"tags":["데이트","디저트·간식"]},{"id":"d154","name":"휘낭시에","meal":false,"on":true,"tags":["디저트·간식"]},{"id":"d155","name":"스콘","meal":false,"on":true,"tags":["디저트·간식"]},{"id":"d156","name":"르뱅쿠키","meal":false,"on":true,"tags":["디저트·간식","우울"]},{"id":"d157","name":"바나나 푸딩","meal":false,"on":true,"tags":["디저트·간식","우울"]},{"id":"d158","name":"크럼블","meal":false,"on":true,"tags":["디저트·간식"]},{"id":"d159","name":"러스크","meal":false,"on":true,"tags":["디저트·간식"]},{"id":"d160","name":"칼국수","meal":true,"on":true,"tags":["점심","해장","혼밥","한식","우울","비 오는 날","추운 날","국물","면","저녁"]},{"id":"d161","name":"볶음밥","meal":true,"on":true,"tags":["점심","혼밥","한식","중식","배고픔","밥","저녁"]},{"id":"d162","name":"샤브샤브","meal":true,"on":true,"tags":["저녁","데이트","다이어트","회식·단체","일식","기쁨·축하","피곤·기력보충","추운 날","국물","고기"]},{"id":"d163","name":"어묵탕","meal":false,"on":true,"tags":["술안주","비 오는 날","추운 날","국물","분식","저녁"]},{"id":"d164","name":"마라탕","meal":true,"on":true,"tags":["점심","혼밥","중식","분노","비 오는 날","추운 날","매운맛","국물","면","저녁","데이트","야식"]},{"id":"d165","name":"라멘","meal":true,"on":true,"tags":["점심","해장","혼밥","일식","우울","배고픔","비 오는 날","추운 날","국물","면","저녁"]},{"id":"d166","name":"햄버거세트","meal":true,"on":true,"tags":["점심","야식","혼밥","패스트푸드","배고픔","빵·간편","저녁"]},{"id":"d167","name":"포케","meal":true,"on":true,"tags":["점심","데이트","다이어트","혼밥","세계요리","가볍게","더운 날","밥","아침"]},{"id":"d168","name":"고구마 또띠아","meal":true,"on":true,"tags":["다이어트","양식","가볍게","빵·간편"]},{"id":"d169","name":"크레페","meal":false,"on":true,"tags":["데이트","디저트·간식"]},{"id":"n000","name":"된장술밥","meal":true,"tags":["저녁","술안주","해장","혼밥","한식","추운 날","비 오는 날","국물","밥"]},{"id":"n001","name":"김밥&쫄면","meal":true,"tags":["점심","저녁","혼밥","분식","매운맛","면","밥","빵·간편"]},{"id":"n002","name":"차돌짬뽕","meal":true,"tags":["점심","저녁","해장","혼밥","중식","분노","비 오는 날","추운 날","매운맛","면","국물","고기"]},{"id":"n003","name":"갈비찜","meal":true,"tags":["저녁","회식·단체","데이트","한식","기쁨·축하","배고픔","피곤·기력보충","고기"]},{"id":"n004","name":"오삼불고기","meal":true,"tags":["점심","저녁","술안주","한식","분노","배고픔","매운맛","고기","해물","밥"]},{"id":"n005","name":"그릴드 소시지","meal":false,"tags":["술안주","야식","양식","고기"]},{"id":"n006","name":"와플&아이스크림","meal":false,"tags":["디저트·간식","데이트","우울","더운 날","빵·간편"]},{"id":"n007","name":"나베","meal":true,"tags":["저녁","데이트","회식·단체","술안주","일식","추운 날","비 오는 날","피곤·기력보충","국물","고기"]},{"id":"n008","name":"육회","meal":false,"tags":["술안주","저녁","데이트","한식","기쁨·축하","피곤·기력보충","고기"]},{"id":"n009","name":"모카번","meal":false,"tags":["디저트·간식","아침","빵·간편"]},{"id":"n010","name":"호두과자","meal":false,"tags":["디저트·간식","추운 날"]},{"id":"n011","name":"수플레","meal":false,"tags":["디저트·간식","데이트","우울"]},{"id":"n012","name":"훈제오리구이","meal":true,"tags":["저녁","회식·단체","한식","기쁨·축하","피곤·기력보충","고기"]},{"id":"n013","name":"카스테라","meal":false,"tags":["디저트·간식","아침","빵·간편"]},{"id":"n014","name":"해물쟁반짜장","meal":true,"tags":["점심","저녁","회식·단체","중식","배고픔","면","해물"]},{"id":"n015","name":"닭똥집","meal":false,"tags":["술안주","야식","한식","고기"]},{"id":"n016","name":"돼지 껍데기","meal":false,"tags":["술안주","야식","한식","고기"]},{"id":"n017","name":"떡만두국","meal":true,"tags":["아침","점심","혼밥","한식","추운 날","가볍게","국물"]},{"id":"n018","name":"순대&튀김","meal":false,"tags":["야식","디저트·간식","분식","우울","빵·간편"]}];
+const BATCHES = [["돼지국밥","순대국밥","곰탕","설렁탕","갈비탕","뼈해장국","감자탕","콩나물 국밥","삼계탕","육개장","황태해장국","선지해장국","추어탕","닭한마리","수제비"],["김치찌개","된장찌개","순두부찌개","청국장","부대찌개","백반","제육볶음","제육덮밥","불고기","떡갈비","쌈밥","비빔밥","육회 비빔밥","생선구이","갈치조림"],["삼겹살or양념갈비","냉면&숯불갈비","수육","보쌈","족발","곱창·막창","양갈비","스테이크","닭갈비","닭볶음탕","찜닭","아구찜","낙곱새","쭈꾸미볶음","훠궈"],["콩국수","비빔국수","잔치국수","밀면","쫄면","곤약비빔면","김밥&라면","분식세트","떡볶이","라볶이","컵밥","삼각김밥&우동","토스트&커피","죽","해물파전"],["두부김치","골뱅이무침","계란말이","닭발","닭강정","치킨","짜장면","짬뽕","탕수육","마파두부밥","깐풍기","꿔바로우","양꼬치","딤섬","우육면"],["마라샹궈","돈가스","규카츠","가츠동","규동","사케동","텐동","카이센동","회덮밥","장어덮밥","치킨마요덮밥","대창덮밥","오므라이스","카레라이스","초밥"],["마제소바","우동","소바","스키야키","오코노미야키","카츠산도","야키토리","가라아게","타코야키","파스타","리조또","라자냐","화덕피자&뇨끼","피자","수제버거"],["핫도그","샌드위치","잠봉뵈르","샐러드","브런치 플래터","피시앤칩스","바비큐 립","감바스","프렌치토스트","베이글","나초","브리또","타코&퀘사디아","케밥","인도요리"],["쌀국수","분짜","반미","월남쌈","반쎄오","팟타이","카오팟","나시고렝","똠얌꿍","푸팟퐁커리","","락사","하이난치킨라이스","닭가슴살 도시락","그릭 요거트"],["오버나이트 오트밀","장조림 버터밥","사과&땅콩버터","빙수","케이크","마카롱","크로플&와플","젤라또","붕어빵&호떡","탕후루","츄러스","티라미수","도넛","에그타르트","팬케이크"],["약과","바스크 치즈케이크","마들렌","까눌레","휘낭시에","스콘","르뱅쿠키","바나나 푸딩","크럼블","러스크"],["칼국수","볶음밥","샤브샤브","어묵탕","마라탕","라멘","햄버거세트","포케","고구마 또띠아","크레페"],["된장술밥","김밥&쫄면","차돌짬뽕","갈비찜","오삼불고기","그릴드 소시지","와플&아이스크림","나베","육회","모카번","호두과자","수플레","훈제오리구이","카스테라","해물쟁반짜장"],["닭똥집","돼지 껍데기","떡만두국","순대&튀김"]];
+const GROUPS = [
+  { id: 'sit', label: '상황', icon: '🍽️', chips: ['아침','점심','저녁','데이트','야식','술안주','해장','다이어트','디저트·간식','혼밥','회식·단체'] },
+  { id: 'kind', label: '종류', icon: '🌏', chips: ['한식','분식','일식','중식','양식','패스트푸드','세계요리'] },
+  { id: 'mood', label: '기분', icon: '😶', chips: ['평상시','우울','분노','기쁨·축하'] },
+  { id: 'cond', label: '컨디션·날씨', icon: '🌧️', chips: ['배고픔','가볍게','피곤·기력보충','비 오는 날','추운 날','더운 날'] },
+  { id: 'spicy', label: '매운맛', icon: '🌶️', chips: ['매운맛','안 매운맛'] },
+  { id: 'form', label: '형태', icon: '🍚', chips: ['밥','면','국물','고기','해물','빵·간편'] },
+];
+const SPICY = '매운맛', NOT_SPICY = '안 매운맛', NORMAL = '평상시';
+const VIRTUAL = [NORMAL, NOT_SPICY];          // 메뉴에 직접 붙이지 않는 선택지
+const SCHEMA = 3;
+const SEAFOOD = ["갈치조림","감바스","골뱅이무침","낙곱새","똠얌꿍","락사","사케동","생선구이","아구찜","오삼불고기","월남쌈","장어덮밥","짬뽕","쭈꾸미볶음","초밥","카이센동","텐동","푸팟퐁커리","피시앤칩스","해물쟁반짜장","해물파전","회덮밥"];
+const NEW_MENUS = [{"name":"된장술밥","meal":true,"tags":["저녁","술안주","해장","혼밥","한식","추운 날","비 오는 날","국물","밥"]},{"name":"김밥&쫄면","meal":true,"tags":["점심","저녁","혼밥","분식","매운맛","면","밥","빵·간편"]},{"name":"차돌짬뽕","meal":true,"tags":["점심","저녁","해장","혼밥","중식","분노","비 오는 날","추운 날","매운맛","면","국물","고기"]},{"name":"갈비찜","meal":true,"tags":["저녁","회식·단체","데이트","한식","기쁨·축하","배고픔","피곤·기력보충","고기"]},{"name":"오삼불고기","meal":true,"tags":["점심","저녁","술안주","한식","분노","배고픔","매운맛","고기","해물","밥"]},{"name":"그릴드 소시지","meal":false,"tags":["술안주","야식","양식","고기"]},{"name":"와플&아이스크림","meal":false,"tags":["디저트·간식","데이트","우울","더운 날","빵·간편"]},{"name":"나베","meal":true,"tags":["저녁","데이트","회식·단체","술안주","일식","추운 날","비 오는 날","피곤·기력보충","국물","고기"]},{"name":"육회","meal":false,"tags":["술안주","저녁","데이트","한식","기쁨·축하","피곤·기력보충","고기"]},{"name":"모카번","meal":false,"tags":["디저트·간식","아침","빵·간편"]},{"name":"호두과자","meal":false,"tags":["디저트·간식","추운 날"]},{"name":"수플레","meal":false,"tags":["디저트·간식","데이트","우울"]},{"name":"훈제오리구이","meal":true,"tags":["저녁","회식·단체","한식","기쁨·축하","피곤·기력보충","고기"]},{"name":"카스테라","meal":false,"tags":["디저트·간식","아침","빵·간편"]},{"name":"해물쟁반짜장","meal":true,"tags":["점심","저녁","회식·단체","중식","배고픔","면","해물"]},{"name":"닭똥집","meal":false,"tags":["술안주","야식","한식","고기"]},{"name":"돼지 껍데기","meal":false,"tags":["술안주","야식","한식","고기"]},{"name":"떡만두국","meal":true,"tags":["아침","점심","혼밥","한식","추운 날","가볍게","국물"]},{"name":"순대&튀김","meal":false,"tags":["야식","디저트·간식","분식","우울","빵·간편"]}];
+const EMO = {'아침':'🌅','점심':'☀️','저녁':'🌙','데이트':'💕','야식':'🌃','술안주':'🍻','해장':'🥣','다이어트':'🥗','디저트·간식':'🍰','혼밥':'🙋','회식·단체':'👥',
+  '한식':'🍚','분식':'🍢','일식':'🍣','중식':'🥟','양식':'🍝','아시안':'🍜','패스트푸드':'🍔','세계요리':'🌮',
+  '우울':'😢','평상시':'🙂','분노':'😡','기쁨·축하':'🥳','배고픔':'🤤','가볍게':'🍃','피곤·기력보충':'💪','비 오는 날':'☔','추운 날':'❄️','더운 날':'🔥',
+  '밥':'🍚','면':'🍜','국물':'🥘','고기':'🍖','해물':'🦐','빵·간편':'🥪','매운맛':'🌶️','안 매운맛':'🧊'};
+const label = c => (EMO[c] ? EMO[c] + ' ' : '') + c;
+const EDIT_CHIPS = g => g.chips.filter(c => !VIRTUAL.includes(c));
+
+const IMG_DIR = 'images/';
+const EXTS = ['png', 'jpg', 'jpeg', 'webp'];
+
+/* ---------------- 저장소 ---------------- */
+let db = null;
+const mem = { meta: new Map(), images: new Map() };
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('menu-picker-v2', 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore('meta'); r.result.createObjectStore('images'); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+function req(store, mode, fn) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, mode); const q = fn(tx.objectStore(store));
+    tx.oncomplete = () => res(q && q.result); tx.onerror = () => rej(tx.error);
+  });
+}
+const dbGet = (st, k) => db ? req(st, 'readonly', s => s.get(k)) : Promise.resolve(mem[st].get(k));
+const dbPut = (st, k, v) => db ? req(st, 'readwrite', s => s.put(v, k)) : Promise.resolve(mem[st].set(k, v));
+const dbDel = (st, k) => db ? req(st, 'readwrite', s => s.delete(k)) : Promise.resolve(mem[st].delete(k));
+const dbClear = st => db ? req(st, 'readwrite', s => s.clear()) : Promise.resolve(mem[st].clear());
+function dbAllImages() {
+  if (!db) return Promise.resolve([...mem.images.entries()]);
+  return new Promise((res, rej) => {
+    const tx = db.transaction('images'); const s = tx.objectStore('images');
+    const k = s.getAllKeys(), v = s.getAll();
+    tx.oncomplete = () => res(k.result.map((key, i) => [key, v.result[i]])); tx.onerror = () => rej(tx.error);
+  });
+}
+
+/* ---------------- 상태 ---------------- */
+let menus = [];   // {id, name, meal, on, tags[]}
+const uploaded = new Map(), folderSrc = new Map();
+const uid = () => 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const norm = s => (s || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
+const baseName = f => f.name.replace(/\.[^.]+$/, '').normalize('NFC').trim();
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function colorFor(name) { let h = 0; for (const ch of name) h = (h * 31 + ch.codePointAt(0)) % 360; return `hsl(${h} 60% 88%)`; }
+const defaults = () => DEFAULT_MENUS.map((m, i) => ({ id: m.id || 'd' + String(i).padStart(3, '0'), name: m.name, meal: m.meal, on: m.on !== false, tags: [...m.tags] }));
+/* 예전 저장 데이터를 새 구조로 바꾸기 (고기·해물 나누기, 아시안→세계요리, 새 메뉴 추가) */
+function migrate(list) {
+  let changed = false;
+  for (const m of list) {
+    const t = new Set(m.tags || []);
+    if (t.has('고기·해물')) { t.delete('고기·해물'); const sea = SEAFOOD.includes(m.name); if (sea) t.add('해물'); if (!sea || m.name === '낙곱새') t.add('고기'); changed = true; }
+    if (t.has('아시안')) { t.delete('아시안'); t.add('세계요리'); changed = true; }
+    if (SEAFOOD.includes(m.name) && !t.has('해물')) { t.add('해물'); changed = true; }
+    m.tags = [...t];
+  }
+  for (const n of NEW_MENUS) if (!list.some(x => norm(x.name) === norm(n.name))) { list.push({ id: uid(), name: n.name, meal: n.meal, on: true, tags: [...n.tags] }); changed = true; }
+  return changed;
+}
+const srcOf = m => uploaded.get(m.id) || (BAKED && BAKED.images && BAKED.images[m.id]) || folderSrc.get(m.id) || null;
+const saveMenus = () => dbPut('meta', 'menus', menus);
+const has = (m, t) => t === NOT_SPICY ? !m.tags.includes(SPICY) : m.tags.includes(t);
+const byName = name => menus.find(m => norm(m.name) === norm(name));
+
+function tryLoad(src) { return new Promise(res => { const im = new Image(); im.onload = () => res(true); im.onerror = () => res(false); im.src = src; }); }
+async function probe(m) {
+  folderSrc.delete(m.id);
+  for (const ext of EXTS) { const src = IMG_DIR + encodeURIComponent(m.name) + '.' + ext; if (await tryLoad(src)) { folderSrc.set(m.id, src); return; } }
+}
+const MAX_PX = 300, QUALITY = 0.86;
+function loadImg(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+function shrinkToBlob(im) {
+  const s = Math.min(1, MAX_PX / Math.max(im.naturalWidth, im.naturalHeight));
+  const w = Math.max(1, Math.round(im.naturalWidth * s)), h = Math.max(1, Math.round(im.naturalHeight * s));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(im, 0, 0, w, h);
+  return new Promise(r => c.toBlob(r, 'image/webp', QUALITY));
+}
+async function optimize(file) {
+  if (/gif/i.test(file.type)) return file;
+  const url = URL.createObjectURL(file);
+  try { const out = await shrinkToBlob(await loadImg(url)); return out && out.size < file.size ? out : file; }
+  catch (e) { return file; } finally { URL.revokeObjectURL(url); }
+}
+async function setImage(id, file, already) {
+  const opt = already ? file : await optimize(file);
+  const blob = new Blob([opt], { type: opt.type || file.type || 'image/png' });
+  await dbPut('images', id, blob);
+  if (uploaded.has(id)) URL.revokeObjectURL(uploaded.get(id));
+  uploaded.set(id, URL.createObjectURL(blob));
+}
+async function removeImage(id) { if (uploaded.has(id)) URL.revokeObjectURL(uploaded.get(id)); uploaded.delete(id); await dbDel('images', id); }
+
+let toastTimer;
+function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
+function thumbHTML(m) {
+  const src = srcOf(m);
+  return src ? `<img src="${esc(src)}" alt="${esc(m.name)}" draggable="false">`
+             : `<div class="ph" style="background:${colorFor(m.name)}">${esc([...m.name][0] || '?')}</div>`;
+}
+
+/* ================= 조건 고르기 (사용자 화면) ================= */
+const sel = Object.fromEntries(GROUPS.map(g => [g.id, new Set()])); sel.mood.add(NORMAL);
+const excl = new Set();          // 빼고 돌릴 선택지
+let tab = 'sit', mode = 'in';
+const NONMEAL_GROUPS = ['sit', 'mood', 'cond'];   // 안주·디저트는 이 그룹을 골랐을 때만
+function activeGroups() { return GROUPS.filter(g => sel[g.id].size && !(g.id === 'mood' && sel.mood.has(NORMAL))); }
+function pool() {
+  const on = menus.filter(m => m.on !== false);
+  if (tab === 'random') return on.filter(m => m.meal && ![...excl].some(c => has(m, c)));
+  const groups = activeGroups();
+  const allowNonMeal = groups.some(g => NONMEAL_GROUPS.includes(g.id));
+  return on.filter(m => {
+    if (!m.meal && !allowNonMeal) return false;
+    for (const g of groups) if (![...sel[g.id]].some(c => has(m, c))) return false;
+    if ([...excl].some(c => has(m, c))) return false;
+    return true;
+  });
+}
+const groupOf = c => GROUPS.find(g => g.chips.includes(c));
+function renderTabs() {
+  $('#tabs').innerHTML = GROUPS.map(g => {
+    const n = (g.id === 'mood' ? [...sel.mood].filter(c => c !== NORMAL).length : sel[g.id].size) + g.chips.filter(c => excl.has(c)).length;
+    return `<button class="tab${tab === g.id ? ' on' : ''}" data-tab="${g.id}">${g.icon} ${g.label}${n ? `<span class="cnt">${n}</span>` : ''}</button>`;
+  }).join('') + `<button class="tab rand${tab === 'random' ? ' on' : ''}" data-tab="random">🎲 완전 랜덤</button>`;
+}
+function renderChips() {
+  const area = $('#chipArea');
+  [...$('#modeSeg').children].forEach(b => b.classList.toggle('on', b.dataset.v === mode));
+  $('#modeHint').textContent = mode === 'in' ? '고른 조건에 맞는 메뉴만 돌려요' : '누른 조건에 해당하는 메뉴는 빼고 돌려요';
+  if (tab === 'random') {
+    const n = pool().length;
+    area.innerHTML = `<div class="rand-box">🎲 <b>조건 없이</b> 식사 메뉴 <b>${n}개</b> 중에서 아무거나 골라요.<br>
+      <span style="color:var(--muted)">안주·디저트는 빠져요.${excl.size ? ' 🚫로 뺀 조건은 여기서도 빠져요.' : ''}</span></div>`;
+    $('#modeBar').classList.add('hidden'); return;
+  }
+  $('#modeBar').classList.remove('hidden');
+  const g = GROUPS.find(x => x.id === tab);
+  area.innerHTML = `<div class="chips">${g.chips.map(c => {
+    const cls = sel[g.id].has(c) ? ' on' : excl.has(c) ? ' ex' : '';
+    return `<button class="chip${cls}" data-c="${esc(c)}">${label(c)}</button>`; }).join('')}</div>`;
+}
+function renderSummary() {
+  const p = pool();
+  const parts = tab === 'random' ? ['🎲 완전 랜덤'] : activeGroups().map(g => [...sel[g.id]].map(label).join(' / '));
+  if (excl.size) parts.push([...excl].map(c => '🚫' + c).join(' '));
+  $('#selText').innerHTML = (parts.length ? parts.map(esc).join(' <b>+</b> ') : '조건 없음 (식사 메뉴 전체)') + ` → 후보 <b>${p.length}개</b>`;
+  $('#poolHint').textContent = p.length ? `후보 ${p.length}개 중에서 골라요 · 스페이스바로도 돌아가요` : '조건에 맞는 메뉴가 없어요. 조건을 하나 빼볼까요?';
+  const c = $('#cands');
+  if (!c.classList.contains('hidden')) c.innerHTML = p.map(m => `<span>${esc(m.name)}</span>`).join('') || '<span>없음</span>';
+}
+function renderPicker() { renderTabs(); renderChips(); renderSummary(); }
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; tab = b.dataset.tab; renderPicker(); });
+$('#modeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.v; renderPicker(); });
+$('#chipArea').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  const c = b.dataset.c, s = sel[tab];
+  if (mode === 'out') {
+    if (c === NORMAL) { toast("'평상시'는 뺄 수 없어요"); return; }
+    s.delete(c); excl.has(c) ? excl.delete(c) : excl.add(c);
+    if (tab === 'mood' && ![...s].some(x => x !== NORMAL)) { s.clear(); s.add(NORMAL); }
+  } else {
+    excl.delete(c);
+    if (tab === 'mood') {
+      if (c === NORMAL) { s.clear(); s.add(NORMAL); }
+      else { s.delete(NORMAL); s.has(c) ? s.delete(c) : s.add(c); if (!s.size) s.add(NORMAL); }
+    } else if (tab === 'spicy') { const had = s.has(c); s.clear(); if (!had) s.add(c); }   // 매운맛/안 매운맛은 하나만
+    else s.has(c) ? s.delete(c) : s.add(c);
+  }
+  renderPicker();
+});
+$('#resetSel').onclick = () => { for (const k in sel) sel[k].clear(); sel.mood.add(NORMAL); excl.clear(); mode = 'in'; if (tab === 'random') tab = 'sit'; renderPicker(); toast('조건을 초기화했어요'); };
+$('#showCands').onclick = () => { const c = $('#cands'); c.classList.toggle('hidden'); $('#showCands').textContent = c.classList.contains('hidden') ? '후보 보기' : '후보 접기'; renderSummary(); };
+
+/* ---------------- 추천 (쫀득 모션) ---------------- */
+const plate = $('#plate'), card = $('#card'), stageImg = $('#stageImg'), stagePh = $('#stagePh'), stageName = $('#stageName'), spinBtn = $('#spinBtn');
+function showOnStage(m, final) {
+  const src = srcOf(m);
+  if (src) { stageImg.src = src; stageImg.classList.remove('hidden'); stagePh.classList.add('hidden'); }
+  else { stagePh.textContent = [...m.name][0] || '?'; stagePh.style.background = colorFor(m.name); stagePh.classList.remove('hidden'); stageImg.classList.add('hidden'); }
+  stageName.innerHTML = final ? `오늘은 <b>${esc(m.name)}</b>!` : esc(m.name);
+}
+function tick(t, dur) {
+  const tilt = (Math.random() < .5 ? -1 : 1) * (4 - t * 3);
+  card.animate([{ transform: 'scale(1,1) rotate(0deg)' }, { transform: `scale(1.12,.86) translateY(6px) rotate(${tilt}deg)`, offset: .3 },
+    { transform: `scale(.93,1.08) translateY(-5px) rotate(${-tilt / 2}deg)`, offset: .65 }, { transform: 'scale(1,1) rotate(0deg)' }],
+    { duration: Math.max(140, dur * 1.4), easing: 'ease-out' });
+  const inner = stageImg.classList.contains('hidden') ? stagePh : stageImg;
+  inner.animate([{ transform: 'translateY(-26px) scale(.85)', opacity: .3, filter: `blur(${3 - t * 3}px)` }, { transform: 'none', opacity: 1, filter: 'blur(0)' }],
+    { duration: Math.max(90, dur * .9), easing: 'cubic-bezier(.3,1.5,.5,1)' });
+}
+function jelly() {
+  card.animate([{ transform: 'scale(.6,.6)' }, { transform: 'scale(1.28,.78)', offset: .22 }, { transform: 'scale(.84,1.2)', offset: .38 },
+    { transform: 'scale(1.12,.9)', offset: .54 }, { transform: 'scale(.96,1.05)', offset: .7 }, { transform: 'scale(1.02,.98)', offset: .85 }, { transform: 'scale(1,1)' }],
+    { duration: 1000, easing: 'ease-out' });
+  stageName.animate([{ transform: 'scale(.4) translateY(20px)', opacity: 0 }, { transform: 'scale(1.25) translateY(-4px)', opacity: 1, offset: .4 },
+    { transform: 'scale(.92)', offset: .65 }, { transform: 'scale(1.04)', offset: .82 }, { transform: 'scale(1)' }], { duration: 900, easing: 'ease-out' });
+}
+function confetti() {
+  const colors = ['#5B9BDA', '#79B6BD', '#3E698F', '#FFC145', '#FF8A65'];
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('i'); p.className = 'bit'; p.style.background = colors[i % colors.length]; plate.appendChild(p);
+    const a = Math.random() * Math.PI * 2, d = 110 + Math.random() * 130, x = Math.cos(a) * d, y = Math.sin(a) * d - 40;
+    p.animate([{ transform: 'translate(-50%,-50%) scale(0)', opacity: 1 },
+      { transform: `translate(calc(-50% + ${x}px),calc(-50% + ${y}px)) rotate(${Math.random() * 540}deg) scale(1)`, opacity: 1, offset: .55 },
+      { transform: `translate(calc(-50% + ${x * 1.1}px),calc(-50% + ${y + 90}px)) rotate(${Math.random() * 900}deg) scale(.6)`, opacity: 0 }],
+      { duration: 1100 + Math.random() * 600, easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = () => p.remove();
+  }
+}
+let spinning = false, lastWinner = null;
+async function spin() {
+  if (spinning) return;
+  const pl = pool();
+  if (!pl.length) { toast('조건에 맞는 메뉴가 없어요. 조건을 하나 빼볼까요?'); return; }
+  spinning = true; spinBtn.disabled = true; spinBtn.textContent = '고르는 중…';
+  plate.classList.remove('win'); plate.classList.add('spinning');
+  const cand = pl.length > 1 ? pl.filter(m => m !== lastWinner) : pl;
+  const winner = cand[Math.floor(Math.random() * cand.length)];
+  const steps = Math.min(30, 10 + pl.length * 3); let prev = null;
+  for (let i = 0; i < steps; i++) {
+    let m = pl[0];
+    if (pl.length > 1) { let g = 0; do { m = pl[Math.floor(Math.random() * pl.length)]; } while ((m === prev || (i === steps - 1 && m === winner && pl.length > 2)) && ++g < 20); }
+    const t = i / steps, dur = 45 + Math.pow(t, 2.6) * 400;
+    showOnStage(m, false); tick(t, dur); prev = m; await sleep(dur);
+  }
+  await sleep(120);
+  showOnStage(winner, true); lastWinner = winner;
+  plate.classList.remove('spinning'); plate.classList.add('win'); jelly(); confetti();
+  await sleep(700);
+  spinning = false; spinBtn.disabled = false; spinBtn.textContent = '🔁 한 번 더!';
+}
+spinBtn.onclick = spin;
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !$('#modalRoot').children.length && !/INPUT|TEXTAREA|BUTTON|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); spin(); }
+});
+
+/* ================= 관리자: 선택지별 메뉴 ================= */
+let view = { type: 'all', key: null };
+const VIEWS = [['all', '📋 전체 메뉴'], ['noimg', '🖼️ 이미지 없는 메뉴'], ['nonmeal', '🍻 식사 아닌 메뉴'], ['off', '⛔ 추천 제외'], ['notag', '❓ 상황 없는 메뉴']];
+function viewList() {
+  const q = norm($('#mSearch').value);
+  let l = menus;
+  if (view.type === 'chip') l = menus.filter(m => has(m, view.key));
+  else if (view.type === 'noimg') l = menus.filter(m => !srcOf(m));
+  else if (view.type === 'nonmeal') l = menus.filter(m => !m.meal);
+  else if (view.type === 'off') l = menus.filter(m => m.on === false);
+  else if (view.type === 'notag') l = menus.filter(m => !GROUPS[0].chips.some(c => has(m, c)));
+  return q ? l.filter(m => norm(m.name).includes(q)) : l;
+}
+function renderSide() {
+  const cnt = t => menus.filter(m => has(m, t)).length;
+  const special = { all: menus.length, noimg: menus.filter(m => !srcOf(m)).length, nonmeal: menus.filter(m => !m.meal).length,
+    off: menus.filter(m => m.on === false).length, notag: menus.filter(m => !GROUPS[0].chips.some(c => has(m, c))).length };
+  let h = '<h4>보기</h4>' + VIEWS.map(([k, t]) => `<button data-v="${k}" class="${view.type === k ? 'on' : ''}"><span>${t}</span><span class="c">${special[k]}</span></button>`).join('');
+  for (const g of GROUPS) h += `<h4>${g.icon} ${g.label}</h4>` + EDIT_CHIPS(g).map(c => chipBtn(c, cnt(c))).join('');
+  $('#side').innerHTML = h;
+}
+const chipBtn = (c, n) => `<button data-chip="${esc(c)}" class="${view.type === 'chip' && view.key === c ? 'on' : ''}"><span>${label(c)}</span><span class="c">${n}</span></button>`;
+function renderGrid() {
+  const l = viewList(), isChip = view.type === 'chip';
+  $('#mTitle').textContent = (isChip ? label(view.key) : (VIEWS.find(v => v[0] === view.type) || [])[1]) + ` (${l.length})`;
+  $('#mPick').classList.toggle('hidden', !isChip);
+  $('#grid').innerHTML = l.map(m => `
+    <div class="item${m.on === false ? ' off' : ''}" data-id="${m.id}">
+      ${isChip ? `<button class="x" data-x title="'${esc(view.key)}'에서 빼기">✕</button>` : ''}
+      <div class="thumb">${thumbHTML(m)}</div>
+      <div class="nm">${esc(m.name)}</div>
+      <div class="flags">${[m.meal ? '' : '식사 아님', has(m, SPICY) ? '🌶️' : '', m.on === false ? '제외' : ''].filter(Boolean).join(' · ')}</div>
+    </div>`).join('') || '<p class="empty">메뉴가 없어요</p>';
+}
+function renderAdmin() { if (VIEWER) return; renderSide(); renderGrid(); }
+function renderAll() { renderPicker(); renderAdmin(); }
+$('#side').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  view = b.dataset.chip ? { type: 'chip', key: b.dataset.chip } : { type: b.dataset.v, key: null };
+  renderAdmin();
+});
+$('#mSearch').addEventListener('input', renderGrid);
+$('#grid').addEventListener('click', async e => {
+  const it = e.target.closest('.item'); if (!it) return;
+  const m = menus.find(x => x.id === it.dataset.id); if (!m) return;
+  if (e.target.closest('[data-x]')) { m.tags = m.tags.filter(t => t !== view.key); await saveMenus(); renderAll(); toast(`'${m.name}'을(를) '${view.key}'에서 뺐어요`); return; }
+  openEditor(m);
+});
+async function addNew() {
+  const name = $('#newName').value.trim();
+  if (!name) { toast('새 메뉴 이름을 입력해 주세요'); $('#newName').focus(); return; }
+  if (byName(name)) { toast('이미 있는 메뉴예요'); return; }
+  const m = { id: uid(), name, meal: true, on: true, tags: view.type === 'chip' ? [view.key] : [] };
+  menus.push(m); await probe(m); await saveMenus(); $('#newName').value = '';
+  renderAll(); openEditor(m); toast(`'${name}' 추가! 선택지를 체크해 주세요`);
+}
+$('#newBtn').onclick = addNew;
+$('#newName').addEventListener('keydown', e => { if (e.key === 'Enter') addNew(); });
+
+/* ---------- 모달 공통 ---------- */
+function openModal(html, onClose) {
+  const root = $('#modalRoot');
+  root.innerHTML = `<div class="modal"><div class="dlg">${html}</div></div>`;
+  const md = root.firstElementChild;
+  const close = () => { root.innerHTML = ''; document.removeEventListener('keydown', onKey); onClose && onClose(); };
+  const onKey = e => { if (e.key === 'Escape' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) close(); };
+  md.addEventListener('mousedown', e => { if (e.target === md) close(); });
+  document.addEventListener('keydown', onKey);
+  return { el: md.firstElementChild, close };
+}
+
+/* ---------- 기존 메뉴 넣기 ---------- */
+$('#mPick').onclick = () => {
+  const key = view.key;
+  const { el, close } = openModal(`<h3>'${esc(key)}'에 넣을 메뉴 고르기</h3>
+    <p class="desc" style="color:var(--muted);font-size:13px;margin:0">누르면 바로 넣고 빼져요. 파란 테두리가 들어 있는 메뉴예요.</p>
+    <div class="row" style="margin-top:10px"><input type="search" id="pkQ" placeholder="메뉴 검색" style="flex:1"><label class="toggle"><input type="checkbox" id="pkOut"> 안 들어간 것만</label></div>
+    <div class="pick-grid" id="pkGrid"></div>
+    <div class="dlg-foot"><span></span><button class="btn primary" id="pkDone">완료</button></div>`, renderAll);
+  const draw = () => {
+    const q = norm(el.querySelector('#pkQ').value), out = el.querySelector('#pkOut').checked;
+    el.querySelector('#pkGrid').innerHTML = menus.filter(m => (!q || norm(m.name).includes(q)) && (!out || !has(m, key)))
+      .map(m => `<div class="item${has(m, key) ? ' in' : ''}" data-id="${m.id}"><div class="thumb">${thumbHTML(m)}</div><div class="nm" style="font-size:12px">${esc(m.name)}</div></div>`).join('');
+  };
+  el.querySelector('#pkQ').addEventListener('input', draw);
+  el.querySelector('#pkOut').addEventListener('change', draw);
+  el.querySelector('#pkGrid').addEventListener('click', async e => {
+    const it = e.target.closest('.item'); if (!it) return;
+    const m = menus.find(x => x.id === it.dataset.id);
+    if (has(m, key)) m.tags = m.tags.filter(t => t !== key); else m.tags.push(key);
+    it.classList.toggle('in', has(m, key)); await saveMenus();
+  });
+  el.querySelector('#pkDone').onclick = close;
+  draw(); setTimeout(() => el.querySelector('#pkQ').focus(), 30);
+};
+
+/* ---------- 메뉴 편집 ---------- */
+let editTarget = null;
+function openEditor(m) {
+  editTarget = m;
+  const chipRow = list => `<div class="chips">${list.map(c => `<button class="chip sm${has(m, c) ? ' on' : ''}" data-t="${esc(c)}">${label(c)}</button>`).join('')}</div>`;
+  const { el, close } = openModal(`<h3>메뉴 편집</h3>
+    <div class="ed-top">
+      <div><div class="thumb" id="edThumb" title="클릭해서 이미지 바꾸기">${thumbHTML(m)}</div>
+        <div class="row" style="margin-top:6px;justify-content:center"><button class="linkbtn" id="edImg">이미지 바꾸기</button><button class="linkbtn" id="edNoImg">지우기</button></div></div>
+      <div>
+        <input type="text" id="edName" value="${esc(m.name)}" style="width:100%;font-size:17px;font-weight:700">
+        <div style="margin-top:10px">
+          <label class="toggle"><input type="checkbox" id="edMeal" ${m.meal ? 'checked' : ''}> 식사 메뉴 (완전 랜덤에 포함)</label>
+          <label class="toggle"><input type="checkbox" id="edOn" ${m.on !== false ? 'checked' : ''}> 추천 후보</label>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.5">식사 메뉴가 아니면(안주·디저트) 종류만 골랐을 땐 안 나오고, 상황·기분·컨디션을 골랐을 때만 나와요.</p>
+      </div>
+    </div>
+    ${GROUPS.map(g => `<div class="ed-sec"><div class="t">${g.icon} ${g.label}</div>${chipRow(EDIT_CHIPS(g))}</div>`).join('')}
+    <div class="dlg-foot"><button class="btn danger" id="edDel">🗑️ 메뉴 삭제</button><button class="btn primary" id="edClose">완료</button></div>`, () => { editTarget = null; renderAll(); });
+  el.addEventListener('click', async e => {
+    const b = e.target.closest('.chip[data-t]'); if (!b) return;
+    const t = b.dataset.t;
+    if (has(m, t)) m.tags = m.tags.filter(x => x !== t); else m.tags.push(t);
+    b.classList.toggle('on', has(m, t)); await saveMenus();
+  });
+  const nm = el.querySelector('#edName');
+  nm.addEventListener('change', async () => {
+    const v = nm.value.trim();
+    if (!v) { nm.value = m.name; return; }
+    if (v !== m.name && menus.some(x => x !== m && norm(x.name) === norm(v))) { toast('같은 이름의 메뉴가 이미 있어요'); nm.value = m.name; return; }
+    m.name = v; await saveMenus(); if (!uploaded.has(m.id)) await probe(m); toast('이름을 바꿨어요');
+  });
+  nm.addEventListener('keydown', e => { if (e.key === 'Enter') nm.blur(); });
+  el.querySelector('#edMeal').onchange = async e => { m.meal = e.target.checked; await saveMenus(); };
+  el.querySelector('#edOn').onchange = async e => { m.on = e.target.checked; await saveMenus(); };
+  const pick = () => { $('#singleInput').value = ''; $('#singleInput').click(); };
+  el.querySelector('#edThumb').onclick = pick; el.querySelector('#edImg').onclick = pick;
+  el.querySelector('#edNoImg').onclick = async () => { await removeImage(m.id); el.querySelector('#edThumb').innerHTML = thumbHTML(m); toast('이미지를 지웠어요'); };
+  el.querySelector('#edDel').onclick = async () => {
+    if (!confirm(`'${m.name}' 메뉴를 삭제할까요?`)) return;
+    menus = menus.filter(x => x !== m); await removeImage(m.id); await saveMenus(); close(); toast('삭제했어요');
+  };
+  el.querySelector('#edClose').onclick = close;
+}
+$('#singleInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f || !editTarget) return;
+  await setImage(editTarget.id, f);
+  const th = document.querySelector('#edThumb'); if (th) th.innerHTML = thumbHTML(editTarget);
+  toast(`'${editTarget.name}' 이미지를 바꿨어요`);
+});
+
+/* ================= 이미지: 파일 이름으로 ================= */
+const isImg = f => (f.type || '').startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(f.name);
+const isSheet = f => /묶음\s*\d+|sheet/i.test(f.name.normalize('NFC'));
+async function handleFiles(fileList) {
+  const files = [...fileList].filter(isImg);
+  if (!files.length) { toast('이미지 파일이 없어요'); return; }
+  let ok = 0; const miss = new Map();
+  toast('이미지를 넣는 중…', 20000);
+  for (const f of files) {
+    const b = baseName(f), m = byName(b);
+    if (m) { await setImage(m.id, f); ok++; }
+    else if (!miss.has(norm(b))) miss.set(norm(b), { name: b, f });
+  }
+  renderAll();
+  const msg = `이미지 ${ok}개를 메뉴에 연결했어요.`;
+  if (!miss.size) { toast(msg); return; }
+  const names = [...miss.values()].map(x => x.name);
+  if (confirm(`${msg}\n\n이름이 맞는 메뉴가 없는 이미지 ${names.length}개:\n` + names.slice(0, 15).map(n => '· ' + n).join('\n') + (names.length > 15 ? '\n…' : '') + '\n\n이 이미지들을 새 메뉴로 추가할까요? (선택지는 나중에 체크)')) {
+    for (const x of miss.values()) { const m = { id: uid(), name: x.name, meal: true, on: true, tags: [] }; menus.push(m); await setImage(m.id, x.f); }
+    await saveMenus(); renderAll(); toast(`새 메뉴 ${miss.size}개를 추가했어요. '❓ 상황 없는 메뉴'에서 선택지를 지정해 주세요`, 5000);
+  }
+}
+$('#bulkBtn').onclick = () => { $('#bulkInput').value = ''; $('#bulkInput').click(); };
+$('#folderBtn').onclick = () => { $('#folderInput').value = ''; $('#folderInput').click(); };
+$('#bulkInput').addEventListener('change', e => handleFiles(e.target.files));
+$('#folderInput').addEventListener('change', e => handleFiles(e.target.files));
+
+/* ================= 이미지: Gemini 시트 자르기 ================= */
+const sheets = [];   // {key, name, img, cols, rows, batch, custom, cells:[{blob,url,empty,assign}]}
+function batchNames(sh) {
+  if (sh.batch === 'custom') return sh.custom.split('\n').map(s => s.trim());
+  return BATCHES[sh.batch - 1] || [];
+}
+function sliceSheet(img, cols, rows) {
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0);
+  const px = ctx.getImageData(0, 0, W, H).data;
+  const jobs = [];
+  for (let r = 0; r < rows; r++) for (let q = 0; q < cols; q++) {
+    const x0 = Math.round(q * W / cols), x1 = Math.round((q + 1) * W / cols), y0 = Math.round(r * H / rows), y1 = Math.round((r + 1) * H / rows);
+    const ins = Math.round(Math.min(x1 - x0, y1 - y0) * 0.035);
+    const ix0 = x0 + ins, ix1 = x1 - ins, iy0 = y0 + ins, iy1 = y1 - ins;
+    const cw = ix1 - ix0, ch = iy1 - iy0;
+    const colCnt = new Uint32Array(cw), rowCnt = new Uint32Array(ch); let ink = 0;
+    for (let y = iy0; y < iy1; y++) for (let x = ix0; x < ix1; x++) {
+      const i = (y * W + x) * 4; const mn = Math.min(px[i], px[i + 1], px[i + 2]), mx = Math.max(px[i], px[i + 1], px[i + 2]);
+      if (mn < 232 || mx - mn > 28) { colCnt[x - ix0]++; rowCnt[y - iy0]++; ink++; }
+    }
+    const th = 2;
+    let bx0 = 0, bx1 = cw - 1, by0 = 0, by1 = ch - 1;
+    while (bx0 < cw && colCnt[bx0] < th) bx0++; while (bx1 > bx0 && colCnt[bx1] < th) bx1--;
+    while (by0 < ch && rowCnt[by0] < th) by0++; while (by1 > by0 && rowCnt[by1] < th) by1--;
+    const empty = ink < cw * ch * 0.015 || bx0 >= cw || by0 >= ch;
+    let side, cx, cy;
+    if (empty) { side = Math.min(cw, ch); cx = ix0 + cw / 2; cy = iy0 + ch / 2; }
+    else { side = Math.max(bx1 - bx0, by1 - by0) * 1.1; cx = ix0 + (bx0 + bx1) / 2; cy = iy0 + (by0 + by1) / 2; }
+    const sx = cx - side / 2, sy = cy - side / 2;
+    const OUT = Math.min(MAX_PX, Math.round(side)), k = OUT / side;
+    const o = document.createElement('canvas'); o.width = OUT; o.height = OUT;
+    const octx = o.getContext('2d'); octx.fillStyle = '#fff'; octx.fillRect(0, 0, OUT, OUT); octx.imageSmoothingQuality = 'high';
+    const ax = Math.max(sx, ix0), ay = Math.max(sy, iy0), bx = Math.min(sx + side, ix1), by = Math.min(sy + side, iy1);
+    if (bx > ax && by > ay) octx.drawImage(c, ax, ay, bx - ax, by - ay, (ax - sx) * k, (ay - sy) * k, (bx - ax) * k, (by - ay) * k);
+    jobs.push(new Promise(res => o.toBlob(b => res({ blob: b, url: URL.createObjectURL(b), empty }), 'image/webp', QUALITY)));
+  }
+  return Promise.all(jobs);
+}
+async function addSheet(file) {
+  const url = URL.createObjectURL(file);
+  let img; try { img = await loadImg(url); } catch (e) { toast(`'${file.name}'을(를) 열지 못했어요`); return; }
+  const m = file.name.normalize('NFC').match(/묶음\s*(\d+)/);
+  const n = m ? +m[1] : 0;
+  const sh = { key: uid(), name: file.name, img, cols: 4, rows: 4, batch: n >= 1 && n <= BATCHES.length ? n : 'custom', custom: '', cells: [] };
+  await resliceSheet(sh); sheets.push(sh); renderSheets();
+}
+async function resliceSheet(sh) {
+  sh.cells.forEach(c => URL.revokeObjectURL(c.url));
+  sh.cells = await sliceSheet(sh.img, sh.cols, sh.rows);
+  assignCells(sh);
+}
+function assignCells(sh) {
+  const names = batchNames(sh);
+  sh.cells.forEach((c, i) => { const nm = names[i] || ''; c.assign = nm && !c.empty ? nm : ''; });
+}
+function nameOptions(cur) {
+  const list = menus.map(m => m.name);
+  if (cur && !list.some(n => norm(n) === norm(cur))) list.unshift(cur);
+  return `<option value="">(건너뛰기)</option>` + list.map(n => `<option${norm(n) === norm(cur) ? ' selected' : ''}>${esc(n)}</option>`).join('');
+}
+function renderSheets() {
+  $('#sheetAllBtn').classList.toggle('hidden', sheets.length < 2);
+  $('#sheets').innerHTML = sheets.map(sh => {
+    const opts = BATCHES.map((b, i) => `<option value="${i + 1}"${sh.batch === i + 1 ? ' selected' : ''}>묶음 ${i + 1} (${b.length}개)</option>`).join('') +
+      `<option value="custom"${sh.batch === 'custom' ? ' selected' : ''}>직접 입력</option>`;
+    const n = sh.cells.filter(c => c.assign).length;
+    return `<div class="sheet" data-k="${sh.key}">
+      <div class="sheet-head"><b title="${esc(sh.name)}">🖼️ ${esc(sh.name)}</b>
+        <select data-a="batch">${opts}</select>
+        칸 <input type="number" min="1" max="8" value="${sh.cols}" data-a="cols">×<input type="number" min="1" max="8" value="${sh.rows}" data-a="rows">
+        <button class="btn action" data-a="apply">이미지 ${n}개 연결</button><button class="btn" data-a="close">닫기</button></div>
+      <textarea data-a="custom" class="${sh.batch === 'custom' ? '' : 'hidden'}" placeholder="한 줄에 메뉴 하나씩, 칸 순서대로(왼쪽→오른쪽, 위→아래). 빈 줄 = 건너뛰기">${esc(sh.custom)}</textarea>
+      <div class="cells" style="grid-template-columns:repeat(${sh.cols},minmax(0,1fr))">${sh.cells.map((c, i) => `
+        <div class="cell${c.assign ? '' : ' skip'}"><img src="${c.url}" alt=""><span class="tag">${i + 1}${c.empty ? ' · 빈 칸' : ''}</span>
+          <select data-a="cell" data-i="${i}">${nameOptions(c.assign)}</select></div>`).join('')}</div></div>`;
+  }).join('');
+}
+async function applySheet(sh) {
+  let ok = 0, made = 0;
+  for (const c of sh.cells) {
+    if (!c.assign) continue;
+    let m = byName(c.assign);
+    if (!m) { m = { id: uid(), name: c.assign, meal: true, on: true, tags: [] }; menus.push(m); made++; }
+    await setImage(m.id, c.blob, true); ok++;
+  }
+  await saveMenus(); renderAll();
+  return [ok, made];
+}
+$('#sheets').addEventListener('change', async e => {
+  const box = e.target.closest('.sheet'); if (!box) return;
+  const sh = sheets.find(s => s.key === box.dataset.k), a = e.target.dataset.a;
+  if (a === 'batch') { sh.batch = e.target.value === 'custom' ? 'custom' : +e.target.value; assignCells(sh); renderSheets(); }
+  else if (a === 'cols' || a === 'rows') { sh[a] = Math.max(1, Math.min(8, +e.target.value || 4)); await resliceSheet(sh); renderSheets(); }
+  else if (a === 'cell') { sh.cells[+e.target.dataset.i].assign = e.target.value; renderSheets(); }
+});
+$('#sheets').addEventListener('input', e => {
+  if (e.target.dataset.a !== 'custom') return;
+  const sh = sheets.find(s => s.key === e.target.closest('.sheet').dataset.k);
+  sh.custom = e.target.value; assignCells(sh);
+  clearTimeout(sh.t); sh.t = setTimeout(() => { const pos = e.target.selectionStart; renderSheets(); const ta = document.querySelector(`.sheet[data-k="${sh.key}"] textarea`); ta.focus(); ta.setSelectionRange(pos, pos); }, 500);
+});
+$('#sheets').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  const box = b.closest('.sheet'), sh = sheets.find(s => s.key === box.dataset.k);
+  if (b.dataset.a === 'close') { sh.cells.forEach(c => URL.revokeObjectURL(c.url)); sheets.splice(sheets.indexOf(sh), 1); renderSheets(); }
+  if (b.dataset.a === 'apply') {
+    const [ok, made] = await applySheet(sh);
+    toast(`${ok}개 메뉴에 이미지를 연결했어요` + (made ? `\n(새 메뉴 ${made}개 생성 — 선택지를 지정해 주세요)` : ''), 4000);
+  }
+});
+$('#sheetAllBtn').onclick = async () => { let t = 0; for (const sh of sheets) t += (await applySheet(sh))[0]; toast(`시트 ${sheets.length}장, 이미지 ${t}개를 연결했어요`); };
+$('#sheetBtn').onclick = () => { $('#sheetInput').value = ''; $('#sheetInput').click(); };
+$('#sheetInput').addEventListener('change', async e => { for (const f of [...e.target.files].filter(isImg)) await addSheet(f); toast('칸마다 메뉴 이름을 확인하고 [연결]을 눌러 주세요', 4000); });
+
+// 끌어다 놓기
+const drop = $('#drop'); let depth = 0;
+const hasFiles = e => [...((e.dataTransfer && e.dataTransfer.types) || [])].includes('Files');
+const blocked = () => VIEWER || document.body.classList.contains('preview');
+window.addEventListener('dragenter', e => { if (blocked() || !hasFiles(e)) return; e.preventDefault(); depth++; drop.classList.add('show'); });
+window.addEventListener('dragover', e => { if (!blocked() && hasFiles(e)) e.preventDefault(); });
+window.addEventListener('dragleave', e => { if (blocked() || !hasFiles(e)) return; if (--depth <= 0) { depth = 0; drop.classList.remove('show'); } });
+window.addEventListener('drop', async e => {
+  if (blocked() || !hasFiles(e)) return; e.preventDefault(); depth = 0; drop.classList.remove('show');
+  const files = [...e.dataTransfer.files].filter(isImg);
+  const sh = files.filter(isSheet), rest = files.filter(f => !isSheet(f));
+  for (const f of sh) await addSheet(f);
+  if (sh.length) { toast('시트를 잘랐어요. 칸 이름을 확인하고 [연결]을 눌러 주세요', 4000); $('#sheets').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  if (rest.length) await handleFiles(rest);
+});
+
+/* ================= 미리보기 / 백업 / 배포 ================= */
+$('#previewBtn').onclick = () => { document.body.classList.add('preview'); window.scrollTo(0, 0); };
+$('#backBtn').onclick = () => document.body.classList.remove('preview');
+
+const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+function dataURLtoBlob(u) {
+  const [head, data] = u.split(','); const type = (head.match(/:(.*?);/) || [])[1] || 'image/png';
+  const bin = atob(data); const arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type });
+}
+async function collectImages(list = menus) {
+  const out = {}; let skipped = 0;
+  for (const m of list) {
+    const b = await dbGet('images', m.id);
+    if (b) { out[m.id] = await blobToDataURL(b); continue; }
+    if (BAKED && BAKED.images && BAKED.images[m.id]) { out[m.id] = BAKED.images[m.id]; continue; }
+    if (folderSrc.get(m.id)) { try { out[m.id] = await blobToDataURL(await shrinkToBlob(await loadImg(folderSrc.get(m.id)))); } catch (e) { skipped++; } }
+  }
+  return { out, skipped };
+}
+function download(name, content, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+const today = () => new Date().toISOString().slice(0, 10).replace(/-/g, '');
+$('#exportBtn').onclick = async () => {
+  toast('백업 파일을 만드는 중…', 20000);
+  const { out } = await collectImages();
+  download(`메뉴추천_백업_${today()}.json`, JSON.stringify({ version: 2, menus, images: out }), 'application/json');
+  toast('백업 파일을 저장했어요');
+};
+$('#importBtn').onclick = () => { $('#importInput').value = ''; $('#importInput').click(); };
+$('#importInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  let data; try { data = JSON.parse(await f.text()); } catch (err) { toast('백업 파일을 읽지 못했어요'); return; }
+  if (!data || !Array.isArray(data.menus)) { toast('올바른 백업 파일이 아니에요'); return; }
+  if (data.version !== 2) {   // 예전 점메추 백업: 이름이 같은 메뉴에 이미지만 가져오기
+    let ok = 0;
+    if (!confirm('예전 점메추 백업이에요. 이름이 같은 메뉴에 이미지만 가져올까요?')) return;
+    for (const om of data.menus) { const u = (data.images || {})[om.id], m = byName(om.name); if (u && m) { await setImage(m.id, dataURLtoBlob(u), true); ok++; } }
+    renderAll(); toast(`이미지 ${ok}개를 가져왔어요`); return;
+  }
+  if (!confirm(`지금 목록을 지우고 백업(메뉴 ${data.menus.length}개)으로 바꿀까요?`)) return;
+  await dbClear('images'); uploaded.forEach(u => URL.revokeObjectURL(u)); uploaded.clear();
+  menus = data.menus.map(m => ({ id: m.id || uid(), name: String(m.name), meal: m.meal !== false, on: m.on !== false, tags: Array.isArray(m.tags) ? m.tags : [] }));
+  migrate(menus);
+  for (const [id, u] of Object.entries(data.images || {})) { const blob = dataURLtoBlob(u); await dbPut('images', id, blob); uploaded.set(id, URL.createObjectURL(blob)); }
+  await saveMenus(); renderAll(); toast('백업을 불러왔어요');
+});
+
+/* ---------- 링크 미리보기 이미지 (1200×630, 음식 3개) ---------- */
+const OG_TITLE = '오늘 뭐 먹지?', OG_DESC = '상황·기분·날씨만 고르면 메뉴 고민 끝! 오늘의 메뉴를 랜덤으로 골라드려요 🍽️';
+const ogCanvas = $('#ogCanvas'), siteUrl = $('#siteUrl');
+let ogDrawn = false;
+function rr(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function drawContain(ctx, im, x, y, w, h) {
+  const s = Math.min(w / im.naturalWidth, h / im.naturalHeight), dw = im.naturalWidth * s, dh = im.naturalHeight * s;
+  ctx.drawImage(im, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+const shuffled = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+async function drawOg() {
+  const ctx = ogCanvas.getContext('2d'), W = 1200, H = 630;
+  try { await Promise.all([document.fonts.load('110px Jua'), document.fonts.load('600 34px Pretendard')]); } catch (e) {}
+  const on = menus.filter(m => m.on !== false && m.meal);
+  const pick = [...shuffled(on.filter(m => uploaded.has(m.id))), ...shuffled(on.filter(m => !uploaded.has(m.id)))].slice(0, 3);
+  const items = await Promise.all(pick.map(m => loadImg(uploaded.get(m.id) || '').then(im => ({ m, im }), () => ({ m, im: null }))));
+  ctx.fillStyle = '#D9E0F0'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(147,185,219,.45)';
+  for (let x = 20; x < 600; x += 38) for (let y = 20; y < H; y += 38) { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); }
+  const cx = 880, cy = 315, R = 262, rot = Math.random() * Math.PI;
+  for (let i = 0; i < 36; i++) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, rot + i * Math.PI / 18, rot + (i + 1) * Math.PI / 18); ctx.closePath(); ctx.fillStyle = i % 2 ? '#FFFFFF' : '#93B9DB'; ctx.fill(); }
+  // 음식 3개: 가운데 크게 + 양옆 작게
+  const spots = [[cx, cy, 300, 0], [cx - 225, cy + 175, 170, -10], [cx + 230, cy - 170, 170, 9]];
+  items.forEach(({ m, im }, i) => {
+    const [x, y, s, deg] = spots[i];
+    ctx.save(); ctx.translate(x, y); ctx.rotate(deg * Math.PI / 180);
+    ctx.shadowColor = 'rgba(31,53,80,.28)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 10;
+    ctx.fillStyle = '#fff'; rr(ctx, -s / 2, -s / 2, s, s, s * .2); ctx.fill(); ctx.shadowColor = 'transparent';
+    const p = s * .07;
+    if (im) drawContain(ctx, im, -s / 2 + p, -s / 2 + p, s - 2 * p, s - 2 * p);
+    else { ctx.fillStyle = colorFor(m.name); rr(ctx, -s / 2 + p, -s / 2 + p, s - 2 * p, s - 2 * p, s * .14); ctx.fill();
+      ctx.fillStyle = 'rgba(31,53,80,.5)'; ctx.font = `${s * .4}px Jua, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText([...m.name][0] || '?', 0, 4); }
+    ctx.restore();
+  });
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#3E698F'; ctx.font = '120px Jua, sans-serif'; ctx.fillText('오늘', 70, 240);
+  ctx.fillStyle = '#5B9BDA'; ctx.font = '126px Jua, sans-serif'; ctx.fillText('뭐 먹지?', 62, 375);
+  ctx.fillStyle = '#5D7591'; ctx.font = '600 32px Pretendard, "Malgun Gothic", sans-serif'; ctx.fillText('상황·기분·날씨만 고르면 메뉴 고민 끝!', 74, 445);
+  const chip = `🍽️ ${menus.filter(m => m.on !== false).length}가지 메뉴 랜덤 추천`;
+  ctx.font = '700 28px Pretendard, "Malgun Gothic", sans-serif';
+  const cw = ctx.measureText(chip).width + 52;
+  ctx.fillStyle = '#79B6BD'; rr(ctx, 70, 492, cw, 62, 31); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(chip, 96, 533);
+  ogDrawn = true;
+}
+$('#shuffleOg').onclick = drawOg;
+function normSite(v) {
+  v = (v || '').trim().replace(/\/+$/, '').replace(/\.git$/i, '').replace(/\/+$/, '');
+  if (!v) return '';
+  // github.com/아이디/저장소 (저장소 주소)를 넣어도 GitHub Pages 주소로 바꿔 줌
+  const gh = v.match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([^\/]+)\/([^\/?#]+)/i);
+  if (gh) { toast(`저장소 주소를 사이트 주소로 바꿨어요\nhttps://${gh[1].toLowerCase()}.github.io/${gh[2]}`, 4000); return `https://${gh[1].toLowerCase()}.github.io/${gh[2]}`; }
+  return /^https?:\/\//i.test(v) ? v : 'https://' + v;
+}
+siteUrl.addEventListener('change', () => { siteUrl.value = normSite(siteUrl.value); dbPut('meta', 'siteUrl', siteUrl.value); });
+async function saveFiles(files) {
+  if (window.showDirectoryPicker) {
+    try {
+      const dir = await window.showDirectoryPicker({ id: 'menu-deploy', mode: 'readwrite' });
+      for (const f of files) { const h = await dir.getFileHandle(f.name, { create: true }); const w = await h.createWritable(); await w.write(f.blob); await w.close(); }
+      return 'folder';
+    } catch (e) { if (e.name === 'AbortError') return 'cancel'; }
+  }
+  for (const f of files) { download(f.name, f.blob, f.blob.type); await sleep(500); }
+  return 'download';
+}
+const fmt = b => b >= 1048576 ? (b / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(b / 1024)) + 'KB';
+$('#bakeBtn').onclick = async () => {
+  const list = menus.filter(m => m.on !== false).map(({ id, name, meal, tags }) => ({ id, name, meal, on: true, tags }));
+  if (!list.length) { toast('추천 후보가 하나도 없어요'); return; }
+  const site = normSite(siteUrl.value);
+  if (!site && !confirm('사이트 주소가 비어 있어요.\n주소가 없으면 링크 미리보기 이미지가 안 뜰 수 있어요.\n\n그래도 저장할까요?')) { siteUrl.focus(); return; }
+  toast('배포용 파일을 만드는 중…', 30000);
+  await drawOg();
+  const ogBlob = await new Promise(r => ogCanvas.toBlob(r, 'image/jpeg', 0.9));
+  const { out, skipped } = await collectImages(list);
+  const json = JSON.stringify({ viewer: true, menus: list, images: out }).replace(/</g, '\\u003c');
+  const ogImg = (site ? site + '/' : '') + 'og-image.jpg?v=' + Date.now().toString(36);
+  const a = esc;
+  const metas = [`<meta name="description" content="${a(OG_DESC)}">`, `<meta property="og:type" content="website">`,
+    `<meta property="og:title" content="${a(OG_TITLE)}">`, `<meta property="og:description" content="${a(OG_DESC)}">`,
+    `<meta property="og:image" content="${a(ogImg)}">`, `<meta property="og:image:width" content="1200">`, `<meta property="og:image:height" content="630">`,
+    site ? `<meta property="og:url" content="${a(site)}/">` : '', `<meta name="twitter:card" content="summary_large_image">`, `<meta name="twitter:image" content="${a(ogImg)}">`
+  ].filter(Boolean).join('\n');
+  const html = SOURCE_HTML.replace('<!--OG-->', () => metas)
+    .replace(/(<script id="baked" type="application\/json">)[\s\S]*?(<\/script>)/, (_, x, y) => x + json + y);
+  const how = await saveFiles([{ name: 'index.html', blob: new Blob([html], { type: 'text/html' }) }, { name: 'og-image.jpg', blob: ogBlob }]);
+  if (how === 'cancel') { toast('저장을 취소했어요'); return; }
+  const where = how === 'folder' ? '고른 폴더에' : '다운로드 폴더에';
+  const noImg = list.filter(m => !out[m.id]).length;
+  toast(`${where} index.html + og-image.jpg를 저장했어요\n메뉴 ${list.length}개 · ${fmt(new Blob([html]).size)}` + (noImg ? ` · 이미지 없는 메뉴 ${noImg}개` : '') + (skipped ? `\n(images 폴더 이미지 ${skipped}개는 못 넣었어요)` : ''), 7000);
+};
+$('#resetBtn').onclick = async () => {
+  if (!confirm('모든 수정 내용과 넣은 이미지를 지우고 처음 목록으로 돌아갈까요?')) return;
+  await dbClear('images'); uploaded.forEach(u => URL.revokeObjectURL(u)); uploaded.clear();
+  menus = defaults(); await saveMenus(); renderAll();
+  await Promise.all(menus.map(probe)); renderAll(); toast('처음 목록으로 돌렸어요');
+};
+
+/* ---------------- 시작 ---------------- */
+(async () => {
+  if (VIEWER) {
+    document.body.classList.add('viewer');
+    menus = BAKED.menus.map(m => ({ ...m, tags: m.tags || [] }));
+    renderPicker();
+    await Promise.all(menus.filter(m => !(BAKED.images || {})[m.id]).map(probe));
+    return;
+  }
+  try {
+    db = await openDB();
+    const saved = await dbGet('meta', 'menus');
+    menus = Array.isArray(saved) ? saved : defaults();
+    const schema = (await dbGet('meta', 'schema')) || 2;
+    if (!Array.isArray(saved)) await saveMenus();
+    else if (schema < SCHEMA && migrate(menus)) { await saveMenus(); setTimeout(() => toast('새 버전에 맞게 정리했어요\n(고기·해물 분리 · 아시안→세계요리 · 새 메뉴 추가)', 5000), 600); }
+    await dbPut('meta', 'schema', SCHEMA);
+    for (const [k, b] of await dbAllImages()) uploaded.set(k, URL.createObjectURL(b));
+    siteUrl.value = (await dbGet('meta', 'siteUrl')) || '';
+  } catch (e) {
+    db = null; menus = defaults();
+    toast('이 브라우저에선 저장이 안 돼서, 새로고침하면 처음 상태로 돌아가요', 5000);
+  }
+  renderAll();
+  await Promise.all(menus.filter(m => !uploaded.has(m.id)).map(probe));
+  renderAll();
+})();
+})();
+</script>
+</body>
+</html>
